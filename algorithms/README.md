@@ -7,6 +7,7 @@
 | 文件 | 算法 | 用途 |
 |---|---|---|
 | `bc.py` | Behavior Cloning | smoke test 用，验证 pipeline |
+| `td3_bc.py` | TD3+BC | C 线第一个 offline RL baseline |
 
 ## 待引入（按小组分工）
 
@@ -14,8 +15,7 @@
 
 | 算法 | 原仓库 | License | 引入方式 |
 |---|---|---|---|
-| **TD3+BC** | tinkoff-ai/CORL `algorithms/offline/td3_bc.py` | Apache-2.0 | 拷贝 + 加 `common.eval` 替换原 eval |
-| **ReBRAC** | tinkoff-ai/CORL `algorithms/offline/rebrac.py` | Apache-2.0 | 同上 |
+| **ReBRAC** | tinkoff-ai/CORL `algorithms/offline/rebrac.py` | Apache-2.0 | 拷贝 + 加 `common.eval`/`ExperimentLogger` 替换原 eval/logger |
 | **PRDC** | LAMDA-RL/PRDC | 无 license | 改写成单文件 CORL-style |
 | **A2PR** | ltlhuuu/A2PR | MIT | 改写成单文件 CORL-style |
 
@@ -38,9 +38,10 @@
 3. **必须**用 `common.data.D4RLDataset` 而不是自己写 loader
 4. **必须**用 `common.eval.eval_episodes` 和 `common.eval.write_result`，保证 JSON schema 一致
 5. **必须**调用 `common.seed.set_seed(seed)`
-6. CLI 接口对齐 `bc.py`：`--env --seed --steps --batch_size --eval_freq --result_dir --wandb`
-7. 跑 100k step 在 `hopper-medium-v2` 上看分数是否进入 `configs/shared.yaml > expected_scores` 的 ±15% 区间
-8. 通过 → 提交；不过 → 调试，不要先提交跑歪的实现
+6. CLI 接口对齐 `bc.py`：`--env --seed --steps --batch_size --eval_freq --result_dir --aim --wandb`
+7. 实验追踪统一用 `common.tracking.ExperimentLogger`，不要在算法里重复写 Aim/W&B 逻辑
+8. 跑 100k step 在 `hopper-medium-v2` 上看分数是否进入 `configs/shared.yaml > expected_scores` 的 ±15% 区间
+9. 通过 → 提交；不过 → 调试，不要先提交跑歪的实现
 
 ## 不在本目录的
 
@@ -51,6 +52,6 @@
 
 - ❌ 在算法实现里 import 自己写的 dataset class
 - ❌ 在算法实现里自己实现 eval（一定走 `common.eval`）
-- ❌ 在算法实现里硬编码 wandb entity 或 result_dir
+- ❌ 在算法实现里硬编码 Aim repo、wandb entity 或 result_dir
 - ❌ 拷 CORL 整个 framework（只拷单个算法文件）
 - ❌ 给每个算法搞独立 conda env（全组共用一个 venv）

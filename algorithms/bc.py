@@ -1,7 +1,7 @@
 """Behavior Cloning (BC) — smoke test 用的最简 offline RL baseline.
 
 不是项目的主算法（C 线主推 TD3+BC / ReBRAC / PRDC / A2PR，另外两个方向跑
-DMG / SCQ）；BC 只用来验证 data + train + eval + wandb 整条 pipeline 通畅。
+DMG / SCQ）；BC 只用来验证 data + train + eval + tracking 整条 pipeline 通畅。
 
 用法（独立运行）：
     python -m algorithms.bc --env hopper-medium-v2 --seed 0 --steps 50000
@@ -20,7 +20,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from common import D4RLDataset, make_env, get_obs_act_dims, eval_episodes, write_result, set_seed
+from common import (
+    D4RLDataset,
+    ExperimentLogger,
+    eval_episodes,
+    get_obs_act_dims,
+    make_env,
+    set_seed,
+    write_result,
+)
 
 
 class MLP(nn.Module):
@@ -58,7 +66,7 @@ class BCAgent:
 
 def train(env_name: str, seed: int, steps: int, batch_size: int,
           eval_freq: int, eval_episodes_n: int, hidden: int,
-          result_dir: str, use_wandb: bool):
+          result_dir: str, use_aim: bool, use_wandb: bool):
 
     set_seed(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -70,33 +78,35 @@ def train(env_name: str, seed: int, steps: int, batch_size: int,
 
     agent = BCAgent(obs_dim, act_dim, hidden=hidden, device=device)
 
-    if use_wandb:
-        import wandb
-        wandb.init(project=os.environ.get("WANDB_PROJECT", "taoyao-rl"),
-                   name=f"bc_{env_name}_s{seed}",
-                   config=dict(algo="bc", env=env_name, seed=seed, steps=steps))
+    logger = ExperimentLogger(
+        algo="bc",
+        env_name=env_name,
+        seed=seed,
+        use_aim=use_aim,
+        use_wandb=use_wandb,
+        config=dict(algo="bc", env=env_name, seed=seed, steps=steps, hidden=hidden),
+    )
 
     print(f"[BC] {env_name} | seed={seed} | device={device} | obs={obs_dim} act={act_dim}")
     t0 = time.time()
 
-    for step in range(1, steps + 1):
-        batch = dataset.sample(batch_size)
-        info = agent.update(batch)
+    try:
+        for step in range(1, steps + 1):
+            batch = dataset.sample(batch_size)
+            info = agent.update(batch)
 
-        if step % eval_freq == 0 or step == steps:
-            metrics = eval_episodes(agent, eval_env, n_episodes=eval_episodes_n)
-            record = write_result(result_dir, "bc", env_name, seed, step,
-                                  "offline", metrics)
-            elapsed = time.time() - t0
-            print(f"  step={step:>7,} | norm={metrics['normalized_score']:6.2f} | "
-                  f"raw={metrics['raw_return']:8.1f} | "
-                  f"loss={info['bc_loss']:.4f} | t={elapsed:.0f}s")
-            if use_wandb:
-                wandb.log({**info, **metrics, "step": step})
-
-    if use_wandb:
-        import wandb
-        wandb.finish()
+            if step % eval_freq == 0 or step == steps:
+                metrics = eval_episodes(agent, eval_env, n_episodes=eval_episodes_n)
+                write_result(result_dir, "bc", env_name, seed, step,
+                             "offline", metrics)
+                elapsed = time.time() - t0
+                log = {**info, **metrics, "step": step}
+                print(f"  step={step:>7,} | norm={metrics['normalized_score']:6.2f} | "
+                      f"raw={metrics['raw_return']:8.1f} | "
+                      f"loss={info['bc_loss']:.4f} | t={elapsed:.0f}s")
+                logger.log(log, step=step, context={"phase": "offline"})
+    finally:
+        logger.finish()
 
 
 def main():
@@ -109,12 +119,13 @@ def main():
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--hidden", type=int, default=256)
     parser.add_argument("--result_dir", default="results")
+    parser.add_argument("--aim", action="store_true", help="启用 Aim local tracking")
     parser.add_argument("--wandb", action="store_true", help="启用 wandb logging")
     args = parser.parse_args()
 
     train(args.env, args.seed, args.steps, args.batch_size,
           args.eval_freq, args.eval_episodes, args.hidden,
-          args.result_dir, args.wandb)
+          args.result_dir, args.aim, args.wandb)
 
 
 if __name__ == "__main__":

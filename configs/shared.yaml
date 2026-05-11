@@ -3,6 +3,7 @@
 
 project:
   name: "taoyao-rl"
+  aim_experiment: "taoyao-rl"  # 默认本地 Aim experiment；无需账号
   wandb_project: "taoyao-rl"   # 组员各自的 wandb account 都用这个 project 名
   # wandb_entity 由各人在自己机器上 wandb login 时配置，不在此处硬编码
 

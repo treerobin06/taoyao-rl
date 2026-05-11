@@ -6,7 +6,8 @@ Unified codebase for a course project on **offline reinforcement learning** and
 The goal of this repository is not to provide every algorithm implementation on
 day one. It provides the shared infrastructure that every group member should use:
 same environment, same D4RL datasets, same evaluation protocol, same result schema,
-and a smoke-tested Behavior Cloning baseline.
+default local Aim tracking, optional W&B cloud sync, and a smoke-tested Behavior
+Cloning baseline.
 
 ## Current Status
 
@@ -120,12 +121,17 @@ Do not start long experiments before this passes.
 ├── common/
 │   ├── data.py
 │   ├── eval.py
-│   └── seed.py
+│   ├── seed.py
+│   └── tracking.py
 ├── algorithms/
 │   ├── README.md
-│   └── bc.py
+│   ├── bc.py
+│   └── td3_bc.py
 ├── scripts/
-│   └── run_bc.sh
+│   ├── aim_ui.sh
+│   ├── export_wandb.py
+│   ├── run_bc.sh
+│   └── run_td3_bc_pilot.sh
 ├── results/
 │   └── README.md
 └── notebooks/
@@ -138,7 +144,7 @@ Data:
 
 - All algorithms must load datasets through `common.data.D4RLDataset`.
 - Use only environments listed in `envs.txt`, unless the group agrees to extend the list.
-- Do not commit D4RL data, checkpoints, wandb logs, or result JSONL files.
+- Do not commit D4RL data, checkpoints, `.aim/`, wandb logs, or result JSONL files.
 
 Evaluation:
 
@@ -159,11 +165,72 @@ Training protocol:
 - Offline eval frequency: every 5k steps.
 - Online eval frequency: every 1k steps.
 
-wandb:
+Experiment tracking: Aim + W&B
+
+Default tracking setup:
+
+| Purpose | Tool | Account Required | Default |
+|---|---|---:|---:|
+| Local curves and run comparison | Aim | No | On |
+| Cloud sync and remote monitoring | W&B | Yes | Off |
+| Reproducible aggregation backup | JSONL | No | On |
+
+Aim is the default local dashboard. Running the scripts creates a local `.aim/`
+repository:
+
+```bash
+bash scripts/run_td3_bc_pilot.sh
+```
+
+Launch the local Aim UI:
+
+```bash
+bash scripts/aim_ui.sh
+```
+
+The default URL is:
+
+```text
+http://127.0.0.1:43800
+```
+
+Disable Aim and keep only JSONL:
+
+```bash
+USE_AIM=0 bash scripts/run_td3_bc_pilot.sh
+```
+
+W&B remains optional for cloud sync and remote AutoDL monitoring.
 
 - Project name: `taoyao-rl`.
 - Run name: `<algo>_<env>_s<seed>`, for example `td3_bc_hopper-medium-v2_s0`.
 - Everyone logs in with their own wandb account. Do not commit tokens.
+- `WANDB_ENTITY` is optional. Leave it unset for personal projects, or set it to
+  the team/workspace name once the group creates one.
+
+First-time setup:
+
+```bash
+wandb login
+```
+
+Enable wandb logging:
+
+```bash
+USE_WANDB=1 bash scripts/run_td3_bc_pilot.sh
+
+# Explicitly write to a team/workspace
+WANDB_ENTITY=<your-team-or-username> USE_WANDB=1 bash scripts/run_td3_bc_pilot.sh
+```
+
+Export wandb runs back to local files:
+
+```bash
+python scripts/export_wandb.py --entity <your-team-or-username> --project taoyao-rl
+```
+
+Exports go to `results/wandb_export/` by default and include `runs_summary.csv`
+plus per-run config/summary/history files. This directory is gitignored.
 
 ## Adding an Algorithm
 
@@ -180,6 +247,7 @@ New algorithm files should:
 - expose CLI arguments compatible with `algorithms/bc.py`
 - use `D4RLDataset`, `eval_episodes`, `write_result`, and `set_seed`
 - write JSONL results into `results/`
+- use `ExperimentLogger` for Aim/W&B tracking instead of duplicating backend code
 
 See `algorithms/README.md` for the planned algorithm list and migration notes.
 
@@ -253,6 +321,7 @@ This repository intentionally excludes:
 
 - D4RL HDF5 datasets
 - checkpoints
+- `.aim/`
 - wandb directories
 - result JSONL files
 - local credentials, tokens, or SSH configuration

@@ -5,9 +5,10 @@
 from .data import D4RLDataset, make_env, get_obs_act_dims
 from .eval import eval_episodes, write_result, load_results
 from .seed import set_seed
+from .tracking import ExperimentLogger
 
 __all__ = [
     "D4RLDataset", "make_env", "get_obs_act_dims",
     "eval_episodes", "write_result", "load_results",
-    "set_seed",
+    "set_seed", "ExperimentLogger",
 ]

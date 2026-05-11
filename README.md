@@ -10,6 +10,7 @@
 - 统一评估函数和 normalized score 计算
 - 统一结果 JSONL schema
 - 统一 seed / eval episodes / 训练步数约定
+- 默认本地 Aim 实验面板，可选 W&B 云端同步
 - 提供一个已经真实跑通的 BC smoke test
 
 这样 A/B/C 各条线后面接算法时，最后的结果可以直接放在一起比较。
@@ -144,12 +145,17 @@ bash scripts/run_bc.sh
 ├── common/
 │   ├── data.py
 │   ├── eval.py
-│   └── seed.py
+│   ├── seed.py
+│   └── tracking.py
 ├── algorithms/
 │   ├── README.md
-│   └── bc.py
+│   ├── bc.py
+│   └── td3_bc.py
 ├── scripts/
-│   └── run_bc.sh
+│   ├── aim_ui.sh
+│   ├── export_wandb.py
+│   ├── run_bc.sh
+│   └── run_td3_bc_pilot.sh
 ├── results/
 │   └── README.md
 └── notebooks/
@@ -162,7 +168,7 @@ bash scripts/run_bc.sh
 
 - 所有算法必须用 `common.data.D4RLDataset` 加载数据。
 - 数据集只用 `envs.txt` 里列出的环境；新增环境前先组内讨论。
-- 不要提交 D4RL 数据、checkpoint、wandb 目录或实验结果 JSONL。
+- 不要提交 D4RL 数据、checkpoint、`.aim/`、wandb 目录或实验结果 JSONL。
 
 ### 评估
 
@@ -183,11 +189,69 @@ bash scripts/run_bc.sh
 - Offline eval 默认每 5k steps 一次。
 - Online eval 默认每 1k steps 一次。
 
-### wandb
+### 实验追踪：Aim + W&B
+
+本仓库默认使用：
+
+| 用途 | 工具 | 是否需要账号 | 默认状态 |
+|---|---|---:|---:|
+| 本地曲线和 run 对比 | Aim | 不需要 | 开启 |
+| 云端同步和远程查看 | W&B | 需要 | 关闭 |
+| 最终聚合和复现备份 | JSONL | 不需要 | 开启 |
+
+Aim 是默认本地面板。直接跑脚本会在项目目录生成 `.aim/`：
+
+```bash
+bash scripts/run_td3_bc_pilot.sh
+```
+
+打开本地 Aim UI：
+
+```bash
+bash scripts/aim_ui.sh
+```
+
+浏览器访问输出的地址，默认是：
+
+```text
+http://127.0.0.1:43800
+```
+
+如果只想写 JSONL、不想写 Aim：
+
+```bash
+USE_AIM=0 bash scripts/run_td3_bc_pilot.sh
+```
+
+W&B 作为可选云端同步，适合需要远程看 AutoDL 进度时使用。
 
 - wandb project 名统一为 `taoyao-rl`。
 - run 名格式：`<algo>_<env>_s<seed>`，例如 `td3_bc_hopper-medium-v2_s0`。
 - 每个人用自己的 wandb 账号登录，不要提交 token。
+- `WANDB_ENTITY` 可选：个人实验可以不设；如果组里建了 team，就设成 team 名。
+
+首次使用：
+
+```bash
+wandb login
+```
+
+打开 wandb 记录：
+
+```bash
+USE_WANDB=1 bash scripts/run_td3_bc_pilot.sh
+
+# 如果要明确写入某个 team / workspace
+WANDB_ENTITY=<your-team-or-username> USE_WANDB=1 bash scripts/run_td3_bc_pilot.sh
+```
+
+把 wandb runs 导回本地：
+
+```bash
+python scripts/export_wandb.py --entity <your-team-or-username> --project taoyao-rl
+```
+
+导出文件默认在 `results/wandb_export/`，包括 `runs_summary.csv`、每个 run 的 config/summary/history。该目录被 git ignore，不要提交 token、wandb 目录或导出的私有实验数据。
 
 ## 如何接入新算法
 
@@ -204,6 +268,7 @@ python -m algorithms.bc --env hopper-medium-v2 --seed 0 --steps 50000
 - CLI 参数对齐 `algorithms/bc.py`
 - 使用 `D4RLDataset`, `eval_episodes`, `write_result`, `set_seed`
 - 输出结果到 `results/`
+- 如需实验曲线，使用 `ExperimentLogger`，不要在算法里重复写 Aim/W&B 逻辑
 
 更多计划中的算法迁移说明见 [algorithms/README.md](algorithms/README.md)。
 
@@ -270,6 +335,7 @@ D4RL 的 MuJoCo 环境注册依赖 `mjrl`。`setup_env.sh` 会先安装 `D4RL==1
 
 - D4RL HDF5 数据集
 - checkpoint
+- `.aim/`
 - wandb 目录
 - result JSONL
 - 本地 token、SSH 配置或个人凭据

@@ -173,6 +173,8 @@ python -c "import torch; print(f'  ✓ torch {torch.__version__} | CUDA: {torch.
 python -c "import gym; print(f'  ✓ gym {gym.__version__}')"
 python -c "import mujoco_py; print('  ✓ mujoco_py import OK')"
 python -c "import d4rl; print('  ✓ d4rl import OK')" 2>&1 | tail -1
+python -c "import aim; print('  ✓ aim import OK')"
+python -c "import wandb; print('  ✓ wandb import OK')"
 
 echo ""
 echo "=================================================="

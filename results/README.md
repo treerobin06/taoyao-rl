@@ -40,7 +40,36 @@ records = load_results("results/")
 # → list[dict]，喂给 pandas / rliable 做 IQM
 ```
 
-## 同步
+## 同步和可视化
 
-各人本地跑完后**用 wandb 同步**（不要把 jsonl push 到 git）。
-最终统计用 wandb export + rliable 画图，或者 `scp` 互相拉本地 jsonl 做交叉验证。
+默认脚本会同时写：
+
+- `results/*.jsonl`：最终统计和复现备份
+- `.aim/`：本地 Aim 曲线面板
+
+打开 Aim：
+
+```bash
+bash scripts/aim_ui.sh
+```
+
+如果要云端同步，再启用 W&B：
+
+```bash
+USE_WANDB=1 bash scripts/run_td3_bc_pilot.sh
+```
+
+最终统计可以用 wandb export + rliable，也可以直接读 `results/*.jsonl` 做交叉验证。
+
+本仓库提供一个轻量导出脚本：
+
+```bash
+python scripts/export_wandb.py --entity <your-team-or-username> --project taoyao-rl
+```
+
+默认导出到 `results/wandb_export/`，包括：
+
+- `runs_summary.csv`
+- 每个 run 的 `*_config.json`
+- 每个 run 的 `*_summary.json`
+- 每个 run 的 `*_history.jsonl` / `*_history.csv`

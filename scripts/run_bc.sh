@@ -16,12 +16,14 @@ export D4RL_SUPPRESS_IMPORT_ERROR=1
 
 ENV="${ENV:-hopper-medium-v2}"
 STEPS="${STEPS:-100000}"
-USE_WANDB="${WANDB:-0}"  # WANDB=1 启用
+USE_AIM="${USE_AIM:-${AIM:-1}}"        # 默认启用本地 Aim；USE_AIM=0 关闭
+USE_WANDB="${USE_WANDB:-${WANDB:-0}}"  # USE_WANDB=1 或 WANDB=1 启用
 
 for SEED in 0 1 2; do
   echo ""
   echo "=== BC | $ENV | seed=$SEED | steps=$STEPS ==="
   ARGS="--env $ENV --seed $SEED --steps $STEPS"
+  [ "$USE_AIM" = "1" ] && ARGS="$ARGS --aim"
   [ "$USE_WANDB" = "1" ] && ARGS="$ARGS --wandb"
   python -m algorithms.bc $ARGS
 done

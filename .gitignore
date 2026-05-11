@@ -8,8 +8,10 @@ __pycache__/
 
 # 实验输出（结果 JSON 不 commit, 在 wandb 看; 但 checkpoint 一定不 commit）
 results/*.jsonl
+results/wandb_export/
 results/checkpoints/
 results/figures/
+.aim/
 wandb/
 
 # D4RL 缓存（每人本地自动下，不 commit）
