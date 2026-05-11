@@ -5,7 +5,7 @@ gym==0.23.1
 Cython<3
 mujoco-py==2.1.2.14
 aim==3.29.1
-wandb==0.16.0
+wandb==0.26.1
 pyrallis==0.3.1
 tqdm==4.66.1
 h5py==3.10.0
