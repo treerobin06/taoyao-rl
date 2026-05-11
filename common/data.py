@@ -48,10 +48,10 @@ class D4RLDataset:
     Done flag follows D4RL convention: terminals[i]=1 表示 i 步后 episode 真的结束
     （不是 time-limit truncation）。
 
-    重要：不要直接用 observations[1:] 自己拼 next_obs。D4RL raw dataset 有
-    timeouts 边界，直接 shift 会把一个 episode 的最后一步接到下一个 episode 的
-    reset observation。这里优先使用 d4rl.qlearning_dataset；如果传入的数据已经
-    含 next_observations，则直接信任它。
+    重要：不要直接用 raw dataset 训练。D4RL raw dataset 即使含有
+    next_observations，也仍然包含 timeout 边界；官方 TD3+BC/CORL 都通过
+    d4rl.qlearning_dataset 过滤这些边界。这里优先走 qlearning_dataset，
+    只有测试 mock 或非 D4RL 数据没有真实 env 时才直接信任 next_observations。
     """
 
     def __init__(self, env, raw_dataset=None, device: str = "cpu", normalize_obs: bool = False):
@@ -96,11 +96,15 @@ class D4RLDataset:
     @staticmethod
     def _as_qlearning_dataset(env, ds: dict) -> dict:
         """Return obs/action/next_obs/reward/done with timeout boundaries handled."""
+        if env is not None and hasattr(d4rl, "qlearning_dataset"):
+            try:
+                return d4rl.qlearning_dataset(env, dataset=ds)
+            except Exception:
+                if "next_observations" not in ds:
+                    raise
+
         if "next_observations" in ds:
             return ds
-
-        if env is not None and hasattr(d4rl, "qlearning_dataset"):
-            return d4rl.qlearning_dataset(env, dataset=ds)
 
         # Fallback for tests/mocks without a real D4RL env. Mirrors D4RL's default
         # qlearning_dataset behavior: skip time-limit final transitions when the

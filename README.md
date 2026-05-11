@@ -198,6 +198,12 @@ bash scripts/run_bc.sh
 - 目前 TD3+BC 在 `hopper-medium-v2` / `halfcheetah-medium-v2` 基本正常；`hopper-medium-replay-v2` 稳定偏低，后续优先做针对性 debug/ablation。
 - AutoDL 实例用于持续实验时建议关机保留，不要每次 release 后从零装环境。
 
+### 当前已知修复
+
+- `common.data.D4RLDataset` 已统一优先走 `d4rl.qlearning_dataset`，即使 raw dataset 里已有 `next_observations` 也会过滤 D4RL timeout 边界。
+- 这个修复让数据口径与官方 TD3+BC / CORL 实现一致。真实 D4RL 数据核对：`hopper-medium-replay-v2` 为 401,598 条 transition，`halfcheetah-medium-v2` 为 999,000 条 transition。
+- 旧版本直接信任 raw dataset 时会多包含 timeout 边界 transition；如果本地分支较旧，请先拉取最新代码再跑实验。
+
 ### 实验追踪：Aim + W&B
 
 本仓库默认使用：
