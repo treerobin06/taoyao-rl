@@ -13,6 +13,7 @@ __pycache__/
 
 # 实验输出（结果 JSON 不 commit, 在 wandb 看; 但 checkpoint 一定不 commit）
 results/*.jsonl
+results/archive_*/
 results/wandb_export/
 results/checkpoints/
 results/figures/
