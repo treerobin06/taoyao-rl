@@ -16,13 +16,22 @@
 4. **不要新增数据集环境名**——只用 `envs.txt` 里列出的，要加先和组员讨论
 5. **离线主训练 1M steps + online fine-tune 100k steps** 是默认值，不要随便改
 
+## 当前阶段策略
+
+本项目目前处于探索阶段，不追求一开始就把所有算法、seed 和数据集铺满。默认策略：
+
+- 新算法或新改动先做 one-step smoke：1 个 seed，1-2 个关键 env，30k/50k steps 看趋势。
+- 只有出现明显有效信号（例如 replay 环境提升 5-10 normalized score，或曲线/critic 行为明显改善）后，再补 3 seeds、更多环境和更长训练。
+- 目前已知 TD3+BC 在 `hopper-medium-v2` 与 `halfcheetah-medium-v2` 基本正常，但 `hopper-medium-replay-v2` 稳定偏低；下一步优先解释和改进 replay 低分，而不是继续做大而全 sweep。
+- AutoDL 实例用于持续项目时只关机不释放，保留环境、D4RL 缓存、mujoco-py 编译结果和 W&B/Aim 配置。
+
 ## 算法引入流程
 
 新增算法（如组员想加 IQL / CQL / Cal-QL）：
 1. 阅读 `algorithms/README.md`
 2. 单文件 CORL-style 放进 `algorithms/<name>.py`
 3. CLI 接口对齐 `algorithms/bc.py`
-4. 在 `hopper-medium-v2` 上跑 100k step smoke 后再扩展
+4. 先按当前阶段策略跑 30k/50k one-step smoke；有信号后再跑 100k/1M 和多 seed
 
 ## 失败排查顺序
 

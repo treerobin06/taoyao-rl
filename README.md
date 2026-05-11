@@ -189,6 +189,15 @@ bash scripts/run_bc.sh
 - Offline eval 默认每 5k steps 一次。
 - Online eval 默认每 1k steps 一次。
 
+### 当前实验策略
+
+本项目目前处于探索阶段，先追求快速发现有价值的方向，不默认做大规模 sweep。
+
+- 新算法或新改动先跑 1 个 seed、1-2 个关键环境、30k/50k steps。
+- 只有出现明显信号，例如 replay 环境提升 5-10 normalized score，才补 3 seeds、更多环境和更长训练。
+- 目前 TD3+BC 在 `hopper-medium-v2` / `halfcheetah-medium-v2` 基本正常；`hopper-medium-replay-v2` 稳定偏低，后续优先做针对性 debug/ablation。
+- AutoDL 实例用于持续实验时建议关机保留，不要每次 release 后从零装环境。
+
 ### 实验追踪：Aim + W&B
 
 本仓库默认使用：
