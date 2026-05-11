@@ -211,8 +211,13 @@ W&B remains optional for cloud sync and remote AutoDL monitoring.
 First-time setup:
 
 ```bash
-wandb login
+cp .env.example .env.local
+bash scripts/setup_wandb.sh
 ```
+
+`setup_wandb.sh` performs user-level W&B login. The API key is stored by the W&B
+CLI under the user's home directory and can be reused by other projects on the
+same machine. Do not write real keys into `.env.local` or tracked files.
 
 Enable wandb logging:
 

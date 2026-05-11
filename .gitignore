@@ -6,6 +6,11 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
+# 本地私密配置（不要提交 token / API key）
+.env
+.env.*
+!.env.example
+
 # 实验输出（结果 JSON 不 commit, 在 wandb 看; 但 checkpoint 一定不 commit）
 results/*.jsonl
 results/wandb_export/

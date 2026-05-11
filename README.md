@@ -233,8 +233,11 @@ W&B 作为可选云端同步，适合需要远程看 AutoDL 进度时使用。
 首次使用：
 
 ```bash
-wandb login
+cp .env.example .env.local
+bash scripts/setup_wandb.sh
 ```
+
+`setup_wandb.sh` 做的是用户级 W&B 登录；API key 由 W&B CLI 保存到用户目录，之后本机其他项目也能复用。不要把真实 key 写进 `.env.local` 或仓库文件。
 
 打开 wandb 记录：
 

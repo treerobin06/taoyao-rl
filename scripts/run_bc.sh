@@ -6,6 +6,12 @@ set -e
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 [ -d ".venv" ] && source .venv/bin/activate
+if [ -f ".env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+fi
 
 export MUJOCO_GL=egl
 export LD_LIBRARY_PATH="$HOME/.mujoco/mujoco210/bin:${LD_LIBRARY_PATH:-}"
