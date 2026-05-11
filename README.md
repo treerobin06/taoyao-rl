@@ -1,19 +1,30 @@
 # Taoyao Offline RL
 
-Unified codebase for a course project on **offline reinforcement learning** and
-**offline-to-online fine-tuning**.
+> 组内统一的 Offline RL / Offline-to-Online RL 项目代码库。  
+> English version: [README_EN.md](README_EN.md)
 
-The goal of this repository is not to provide every algorithm implementation on
-day one. It provides the shared infrastructure that every group member should use:
-same environment, same D4RL datasets, same evaluation protocol, same result schema,
-and a smoke-tested Behavior Cloning baseline.
+这个仓库不是一开始就把所有算法都写好，而是先把**全组共用的实验底座**搭起来：
 
-## Current Status
+- 统一 Linux + CUDA + MuJoCo + D4RL 环境
+- 统一 D4RL 数据加载方式
+- 统一评估函数和 normalized score 计算
+- 统一结果 JSONL schema
+- 统一 seed / eval episodes / 训练步数约定
+- 提供一个已经真实跑通的 BC smoke test
 
-This repository has been smoke-tested on an AutoDL RTX 4090 48G instance with
-Python 3.10, CUDA 11.8, PyTorch 2.1.2, MuJoCo 2.1, and D4RL.
+这样 A/B/C 各条线后面接算法时，最后的结果可以直接放在一起比较。
 
-Verified smoke result on `hopper-medium-v2`:
+## 当前状态
+
+这个仓库已经在 AutoDL RTX 4090 48G 上真实 smoke test 通过，环境为：
+
+- Python 3.10
+- CUDA 11.8
+- PyTorch 2.1.2
+- MuJoCo 2.1
+- D4RL 1.1
+
+`hopper-medium-v2` 实测结果：
 
 ```text
 torch 2.1.2+cu118 | CUDA: True
@@ -24,47 +35,53 @@ normalized_score = 38.4
 ALL PASSED (6/6)
 ```
 
-## Project Directions
+如果你在服务器上能跑通 `python smoke_test.py`，说明本机环境、MuJoCo、D4RL 数据、训练和评估链路都基本 OK。
 
-| Track | Main algorithms | Notes |
+## 项目分工
+
+| 方向 | 主要算法 | 说明 |
 |---|---|---|
-| A · Value Conservatism | CQL, IQL, Cal-QL | Use the shared evaluator; avoid duplicating C-track policy-regularization work. |
-| B · New SOTA Extensions | DMG, SCQ | Higher-risk recent methods; keep outputs compatible with `common.eval`. |
-| C · Policy Regularization / O2O | TD3+BC, ReBRAC, PRDC, A2PR | Main policy-regularization family for D4RL MuJoCo and offline-to-online comparison. |
+| A · Value Conservatism | CQL, IQL, Cal-QL | 偏 value pessimism / conservative Q；输出仍需走统一 evaluator。 |
+| B · New SOTA Extensions | DMG, SCQ | 较新的高风险方向；重点是把结果接到统一数据和评估协议。 |
+| C · Policy Regularization / O2O | TD3+BC, ReBRAC, PRDC, A2PR | 偏 policy regularization 和 offline-to-online fine-tuning，是 D4RL MuJoCo 主线之一。 |
 
-Every track should use `common.data.D4RLDataset`, `common.eval.eval_episodes`,
-and `common.eval.write_result`, so final plots compare like with like.
+无论谁负责哪个算法，都尽量遵守同一套接口：
 
-## Why This Repo Exists
+- `common.data.D4RLDataset`
+- `common.eval.eval_episodes`
+- `common.eval.write_result`
+- `common.seed.set_seed`
 
-Offline RL experiments often fail because different people quietly use different:
+## 为什么要统一代码库
 
-- D4RL preprocessing rules
-- timeout / terminal handling
-- normalized score calculation
-- seeds and evaluation episodes
-- result JSON formats
-- MuJoCo / D4RL install recipes
+Offline RL 很容易因为一些细节不同导致结果不能比，例如：
 
-This repo makes those choices explicit and shared.
+- D4RL timeout / terminal 处理不一致
+- normalized score 计算口径不一致
+- eval episode 数不同
+- seed 没统一
+- 每个人自己写一套 data loader
+- 每个人输出的结果格式不同
 
-## Requirements
+本仓库的核心作用就是把这些公共部分先固定住。后面各自接算法时，不要重复造 data / eval / seed 轮子。
 
-Use a Linux GPU server. macOS is fine for editing code, but this project does not
-support local macOS training.
+## 环境要求
 
-Recommended environment:
+请使用 Linux GPU 服务器运行。本地 macOS 适合写代码和看结果，不建议训练。
+
+推荐环境：
 
 - Ubuntu / Debian-like Linux
 - Python 3.10
 - CUDA 11.8+
-- NVIDIA GPU, 24GB+ VRAM preferred
-- AutoDL, Vast.ai, or a self-managed Linux GPU server
+- NVIDIA GPU，建议 24GB 显存以上
+- AutoDL / Vast.ai / 自建 Linux GPU 服务器均可
 
-Important: D4RL still depends on the legacy `mujoco-py` stack. Python 3.11 is not
-supported here.
+注意：D4RL 仍然依赖 legacy `mujoco-py`，所以这里统一使用 Python 3.10，不支持 Python 3.11。
 
-## Quick Start
+## 快速开始
+
+在 Linux GPU 服务器上运行：
 
 ```bash
 git clone https://github.com/treerobin06/taoyao-rl.git
@@ -77,38 +94,45 @@ python download_d4rl.py hopper-medium-v2
 python smoke_test.py
 ```
 
-If `python smoke_test.py` passes, the machine is ready for algorithm development.
+如果 `python smoke_test.py` 最后显示：
 
-To pre-download all configured MuJoCo datasets:
+```text
+ALL PASSED (6/6)
+```
+
+就说明这台机器可以开始接算法和跑实验。
+
+如果想一次性下载全部配置好的 MuJoCo 数据集：
 
 ```bash
 python download_d4rl.py
 ```
 
-To run the BC baseline for 3 seeds:
+如果想跑一个 3 seeds 的 BC baseline 验证完整 pipeline：
 
 ```bash
 bash scripts/run_bc.sh
 ```
 
-## What `smoke_test.py` Checks
+## Smoke Test 会检查什么
 
-The smoke test is intentionally small but end-to-end:
+`smoke_test.py` 会做一个小但完整的端到端检查：
 
-1. PyTorch and CUDA are available.
-2. `gym.make("hopper-medium-v2")` works.
-3. MuJoCo reset/step works.
-4. D4RL dataset loads and has expected shape.
-5. Behavior Cloning trains for 2,000 updates.
-6. Evaluation writes normalized score through the shared evaluator.
+1. PyTorch + CUDA 是否可用
+2. `gym.make("hopper-medium-v2")` 是否成功
+3. MuJoCo env reset / step 是否正常
+4. D4RL dataset 是否能下载和读取
+5. BC 是否能训练 2,000 step
+6. 是否能用统一 evaluator 得到 normalized score
 
-Do not start long experiments before this passes.
+长实验前必须先跑通这个脚本。
 
-## Repository Layout
+## 目录结构
 
 ```text
 .
 ├── README.md
+├── README_EN.md
 ├── AGENTS.md
 ├── requirements.txt
 ├── setup_env.sh
@@ -132,60 +156,60 @@ Do not start long experiments before this passes.
     └── README.md
 ```
 
-## Shared Rules
+## 全组约定
 
-Data:
+### 数据
 
-- All algorithms must load datasets through `common.data.D4RLDataset`.
-- Use only environments listed in `envs.txt`, unless the group agrees to extend the list.
-- Do not commit D4RL data, checkpoints, wandb logs, or result JSONL files.
+- 所有算法必须用 `common.data.D4RLDataset` 加载数据。
+- 数据集只用 `envs.txt` 里列出的环境；新增环境前先组内讨论。
+- 不要提交 D4RL 数据、checkpoint、wandb 目录或实验结果 JSONL。
 
-Evaluation:
+### 评估
 
-- All algorithms must use `common.eval.eval_episodes`.
-- All evaluation records must be written through `common.eval.write_result`.
-- Normalized score must be `env.get_normalized_score(raw_return) * 100`.
+- 所有算法必须用 `common.eval.eval_episodes` 做评估。
+- 所有评估记录必须用 `common.eval.write_result` 写入 `results/`。
+- normalized score 统一用 `env.get_normalized_score(raw_return) * 100`。
 
-Seeds:
+### Seeds
 
-- Default seeds are `0, 1, 2`.
-- Important ablations should use 5 seeds if time allows.
-- Every training script must call `common.seed.set_seed(seed)`.
+- 默认 seeds: `0, 1, 2`。
+- 关键 ablation 有时间则扩到 5 seeds。
+- 每个训练脚本必须调用 `common.seed.set_seed(seed)`。
 
-Training protocol:
+### 训练协议
 
-- Offline training: 1M gradient steps by default.
-- Online fine-tuning: 100k environment steps by default.
-- Offline eval frequency: every 5k steps.
-- Online eval frequency: every 1k steps.
+- Offline training 默认 1M gradient steps。
+- Online fine-tuning 默认 100k environment steps。
+- Offline eval 默认每 5k steps 一次。
+- Online eval 默认每 1k steps 一次。
 
-wandb:
+### wandb
 
-- Project name: `taoyao-rl`.
-- Run name: `<algo>_<env>_s<seed>`, for example `td3_bc_hopper-medium-v2_s0`.
-- Everyone logs in with their own wandb account. Do not commit tokens.
+- wandb project 名统一为 `taoyao-rl`。
+- run 名格式：`<algo>_<env>_s<seed>`，例如 `td3_bc_hopper-medium-v2_s0`。
+- 每个人用自己的 wandb 账号登录，不要提交 token。
 
-## Adding an Algorithm
+## 如何接入新算法
 
-Use the existing BC implementation as the interface template:
+现有 `algorithms/bc.py` 是接口模板：
 
 ```bash
 python -m algorithms.bc --env hopper-medium-v2 --seed 0 --steps 50000
 ```
 
-New algorithm files should:
+新算法建议：
 
-- live under `algorithms/<algo>.py`
-- follow a single-file CORL-style structure where practical
-- expose CLI arguments compatible with `algorithms/bc.py`
-- use `D4RLDataset`, `eval_episodes`, `write_result`, and `set_seed`
-- write JSONL results into `results/`
+- 放在 `algorithms/<algo>.py`
+- 尽量保持单文件 CORL-style，方便对照和修改
+- CLI 参数对齐 `algorithms/bc.py`
+- 使用 `D4RLDataset`, `eval_episodes`, `write_result`, `set_seed`
+- 输出结果到 `results/`
 
-See `algorithms/README.md` for the planned algorithm list and migration notes.
+更多计划中的算法迁移说明见 [algorithms/README.md](algorithms/README.md)。
 
-## Configured Datasets
+## 当前配置的数据集
 
-Primary D4RL MuJoCo v2 datasets:
+主数据集是 D4RL MuJoCo v2：
 
 - `hopper-medium-v2`
 - `hopper-medium-replay-v2`
@@ -194,14 +218,13 @@ Primary D4RL MuJoCo v2 datasets:
 - `walker2d-medium-v2`
 - `walker2d-medium-replay-v2`
 
-AntMaze is intentionally commented out in `envs.txt` until the group decides to
-expand the scope.
+AntMaze 暂时在 `envs.txt` 里注释掉，等组内确认要扩展再启用。
 
-## Expected Compute
+## 算力估算
 
-Approximate single-seed runtime on RTX 4090:
+RTX 4090 单 seed 粗略估计：
 
-| Algorithm | Offline 1M steps | Online 100k steps | Total |
+| 算法 | Offline 1M steps | Online 100k steps | 单 seed 总时长 |
 |---|---:|---:|---:|
 | BC | 20 min | - | 20 min |
 | TD3+BC | 40 min | 20 min | ~1 h |
@@ -211,21 +234,19 @@ Approximate single-seed runtime on RTX 4090:
 | DMG | 50 min | 25 min | ~1.25 h |
 | SCQ | 60 min | 30 min | ~1.5 h |
 
-For a continued project on AutoDL, it is usually better to power off the instance
-after setup and reuse it later, instead of releasing it and rebuilding the full
-environment from scratch.
+如果这是持续项目，AutoDL 上更推荐 setup 成功后关机保留实例，而不是立刻 release。这样下次可以复用环境、数据集缓存和 `mujoco-py` 编译结果。
 
-## Troubleshooting
+## 常见问题
 
-### MuJoCo download is slow or blocked
+### MuJoCo 下载慢或失败
 
-`setup_env.sh` tries multiple URLs and supports a local tarball cache:
+`setup_env.sh` 会尝试多个 MuJoCo 下载地址，也支持手动指定本地 tarball：
 
 ```bash
 MUJOCO_TARBALL=/path/to/mujoco210-linux-x86_64.tar.gz bash setup_env.sh
 ```
 
-On AutoDL, a convenient cache path is:
+AutoDL 上推荐缓存路径：
 
 ```text
 /root/autodl-tmp/mujoco210-linux-x86_64.tar.gz
@@ -233,28 +254,24 @@ On AutoDL, a convenient cache path is:
 
 ### `GLIBCXX_3.4.30 not found`
 
-AutoDL conda images may load an older `libstdc++.so.6` before the system version.
-`setup_env.sh` and `scripts/run_bc.sh` set `LD_PRELOAD` to the system libstdc++
-when available.
+AutoDL conda 镜像可能会优先加载旧版 `libstdc++.so.6`。脚本里已经用 `LD_PRELOAD` 优先加载系统 libstdc++，一般不需要手动处理。
 
-### `hopper-medium-v2` does not exist
+### `hopper-medium-v2` 不存在
 
-D4RL MuJoCo registration requires `mjrl`. `setup_env.sh` installs D4RL separately
-and then installs `mjrl` from GitHub. If GitHub is unreachable, rerun with a working
-proxy or install `mjrl` manually before importing D4RL.
+D4RL 的 MuJoCo 环境注册依赖 `mjrl`。`setup_env.sh` 会先安装 `D4RL==1.1`，再安装 `mjrl`。如果 GitHub 访问失败，需要挂代理或手动安装 `mjrl`。
 
-### macOS fails
+### macOS 能跑吗
 
-Expected. Use macOS for editing and a Linux GPU server for running.
+不建议。macOS 上 MuJoCo + D4RL legacy 依赖很容易出问题。本项目默认只支持 Linux GPU 服务器。
 
-## Public Sharing Notes
+## 公开仓库注意事项
 
-This repository intentionally excludes:
+本仓库不会提交：
 
-- D4RL HDF5 datasets
-- checkpoints
-- wandb directories
-- result JSONL files
-- local credentials, tokens, or SSH configuration
+- D4RL HDF5 数据集
+- checkpoint
+- wandb 目录
+- result JSONL
+- 本地 token、SSH 配置或个人凭据
 
-Only source code, configuration, and lightweight documentation should be pushed.
+仓库里只保留源码、配置和轻量文档。
