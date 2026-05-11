@@ -1,0 +1,39 @@
+# venv / 缓存
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# 实验输出（结果 JSON 不 commit, 在 wandb 看; 但 checkpoint 一定不 commit）
+results/*.jsonl
+results/checkpoints/
+results/figures/
+wandb/
+
+# D4RL 缓存（每人本地自动下，不 commit）
+.d4rl/
+
+# 数据 / 大文件
+data/
+*.h5
+*.hdf5
+*.pkl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 笔记本输出
+*.ipynb_checkpoints
+
+# 临时
+*.log
+*.tmp
+nohup.out

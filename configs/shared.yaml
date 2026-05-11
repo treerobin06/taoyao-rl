@@ -1,0 +1,62 @@
+# 全组共享实验配置 - 任何人修改需在群里通知
+# 用法：所有训练脚本读这里的默认值；只在命令行覆盖特定字段
+
+project:
+  name: "taoyao-rl"
+  wandb_project: "taoyao-rl"   # 组员各自的 wandb account 都用这个 project 名
+  # wandb_entity 由各人在自己机器上 wandb login 时配置，不在此处硬编码
+
+evaluation:
+  n_episodes: 10               # 每次 eval 跑 10 episode 取平均
+  eval_freq_offline: 5000      # 离线训练每 5k step 一次
+  eval_freq_online: 1000       # 在线 fine-tune 每 1k step 一次
+  result_dir: "results"        # results/<algo>_<env>_seed<N>.jsonl
+
+training:
+  offline_steps: 1_000_000     # 离线主训练
+  online_steps: 100_000        # 离线后在线 fine-tuning
+  batch_size: 256
+  hidden_dim: 256
+
+seeds: [0, 1, 2]               # 默认 3 seeds; 关键 ablation 扩到 5
+
+envs:
+  primary: "hopper-medium-v2"  # smoke test + 主战场
+  full:
+    - "hopper-medium-v2"
+    - "hopper-medium-replay-v2"
+    - "halfcheetah-medium-v2"
+    - "halfcheetah-medium-replay-v2"
+    - "walker2d-medium-v2"
+    - "walker2d-medium-replay-v2"
+
+# 各算法在各环境上 normalized score 的验收线（来自原论文）
+# 跑出来与下表差 < 15% 算复现成功；超过 15% 停下来 debug
+expected_scores:
+  hopper-medium-v2:
+    bc: 52.5
+    td3_bc: 59.3
+    cql: 58.5
+    iql: 66.3
+    rebrac: 79.0
+    prdc: 100.3
+    a2pr: 99.9
+    dmg: 100.2
+  hopper-medium-replay-v2:
+    bc: 18.1
+    td3_bc: 60.9
+    cql: 48.6
+    iql: 94.7
+    rebrac: 98.1
+  halfcheetah-medium-v2:
+    bc: 42.6
+    td3_bc: 48.3
+    cql: 44.0
+    iql: 47.4
+    rebrac: 65.6
+  walker2d-medium-v2:
+    bc: 75.3
+    td3_bc: 83.7
+    cql: 72.5
+    iql: 78.3
+    rebrac: 82.5

@@ -1,0 +1,14 @@
+# D4RL 环境清单（全组共用）
+# 主战场：MuJoCo locomotion medium / medium-replay
+hopper-medium-v2
+hopper-medium-replay-v2
+halfcheetah-medium-v2
+halfcheetah-medium-replay-v2
+walker2d-medium-v2
+walker2d-medium-replay-v2
+
+# 备用（如有时间或 DMG/SCQ 方向需要 AntMaze 时启用）
+# antmaze-umaze-v2
+# antmaze-umaze-diverse-v2
+# antmaze-medium-play-v2
+# antmaze-medium-diverse-v2
