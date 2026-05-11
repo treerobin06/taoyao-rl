@@ -12,7 +12,7 @@
 
 1. **不要写跨平台兼容代码**——只针对 Linux + CUDA + Python 3.10，macOS / Python 3.11 跑不通是预期
 2. **算法实现必须用 `common.data.D4RLDataset` 和 `common.eval.eval_episodes`**——不要自己写 loader/eval
-3. **不要硬编码 wandb entity 或个人路径**——组员各自机器配置不同
+3. **不要硬编码 wandb entity、API key 或个人路径**——W&B 凭据统一走用户级 `wandb login`，项目只放 `WANDB_PROJECT` / `WANDB_ENTITY`
 4. **不要新增数据集环境名**——只用 `envs.txt` 里列出的，要加先和组员讨论
 5. **离线主训练 1M steps + online fine-tune 100k steps** 是默认值，不要随便改
 
@@ -44,4 +44,4 @@
 ## 与全局规则的关系
 
 本项目运行在通用 Linux GPU 服务器上，**不依赖任何个人凭据 / proxy / token**。
-组员各自的 wandb account、SSH 配置、AutoDL token 等都在各人本地 `.env` 或 `wandb login` 里处理，不进本仓库。
+组员各自的 wandb account、SSH 配置、AutoDL token 等都在各人本地 `.env` 或用户级登录缓存里处理，不进本仓库。W&B 用 `wandb login` 做用户级配置，登录态由 W&B CLI 存在用户目录，所有项目可复用；不要把 W&B API key/token 明文写进 `AGENTS.md`、README、`.env.local` 或任何会提交的文件。
