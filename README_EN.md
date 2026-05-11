@@ -200,6 +200,8 @@ Disable Aim and keep only JSONL:
 USE_AIM=0 bash scripts/run_td3_bc_pilot.sh
 ```
 
+Command-line `USE_AIM` / `USE_WANDB` values override defaults from `.env.local`.
+
 W&B remains optional for cloud sync and remote AutoDL monitoring.
 
 - Project name: `taoyao-rl`.

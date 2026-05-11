@@ -9,10 +9,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 [ -d ".venv" ] && source .venv/bin/activate
 if [ -f ".env.local" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env.local
-  set +a
+  while IFS='=' read -r key value; do
+    case "$key" in ""|\#*) continue ;; esac
+    case "$key" in *[!A-Za-z0-9_]*|[0-9]*) continue ;; esac
+    [ -z "${!key+x}" ] && export "$key=$value"
+  done < .env.local
 fi
 
 export MUJOCO_GL=egl

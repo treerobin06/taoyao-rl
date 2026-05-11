@@ -223,6 +223,8 @@ http://127.0.0.1:43800
 USE_AIM=0 bash scripts/run_td3_bc_pilot.sh
 ```
 
+命令行传入的 `USE_AIM` / `USE_WANDB` 会覆盖 `.env.local` 里的默认值。
+
 W&B 作为可选云端同步，适合需要远程看 AutoDL 进度时使用。
 
 - wandb project 名统一为 `taoyao-rl`。
