@@ -1,56 +1,169 @@
-# Taoyao RL · 项目本地 Agent 指令
+# Taoyao RL Agent Guide
 
-给 Claude/Codex/Cursor 等 AI 助手用。**只写本项目特化内容**，不重复全局规则。
+给 Claude / Codex / Cursor 等 AI 助手用。这里记录本 RL 项目的当前状态、实验纪律和下一步方向。不要把全局个人规则、token、API key 写进这个文件。
 
-## 项目身份
+## Project Identity
 
-- 类型：高校小组 offline RL / offline-to-online RL 项目
-- 算力：Linux GPU 服务器（AutoDL / Vast / 自建，Python 3.10）+ 本地 Mac 写代码
-- 目标：多人协作下保证 cross-algorithm / cross-line 结果可比
+- Repo: `https://github.com/treerobin06/taoyao-rl`
+- Local path: `/Users/robin/Desktop/taoyao/RL/project`
+- Remote AutoDL path: `/root/autodl-tmp/taoyao-rl/project`
+- External source checkouts on AutoDL: `/root/autodl-tmp/external_repos/`
+- Project type: offline RL / offline-to-online RL group project
+- Current stage: **baseline/reproduction enough; contribution exploration should start**
 
-## 强制规则
+## Canonical Docs
 
-1. **不要写跨平台兼容代码**——只针对 Linux + CUDA + Python 3.10，macOS / Python 3.11 跑不通是预期
-2. **算法实现必须用 `common.data.D4RLDataset` 和 `common.eval.eval_episodes`**——不要自己写 loader/eval
-3. **不要硬编码 wandb entity、API key 或个人路径**——W&B 凭据统一走用户级 `wandb login`，项目只放 `WANDB_PROJECT` / `WANDB_ENTITY`
-4. **不要新增数据集环境名**——只用 `envs.txt` 里列出的，要加先和组员讨论
-5. **离线主训练 1M steps + online fine-tune 100k steps** 是默认值，不要随便改
+Read these first before proposing or launching experiments:
 
-## 当前阶段策略
+1. `refine-logs/EXPERIMENT_RESULTS.md` - latest result summary and decisions
+2. `refine-logs/EXPERIMENT_TRACKER.md` - run tracker, TODOs, deferred experiments
+3. `refine-logs/SOURCE_REPRO_PLAN.md` - official-source reproduction policy, SSAR cache paths
+4. `refine-logs/remote-results/` - parsed remote run summaries
 
-本项目目前处于探索阶段，不追求一开始就把所有算法、seed 和数据集铺满。默认策略：
+If these docs conflict with older README text, trust the `refine-logs/` files.
 
-- 新算法或新改动先做 one-step smoke：1 个 seed，1-2 个关键 env，30k/50k steps 看趋势。
-- 只有出现明显有效信号（例如 replay 环境提升 5-10 normalized score，或曲线/critic 行为明显改善）后，再补 3 seeds、更多环境和更长训练。
-- 目前已知 TD3+BC 在 `hopper-medium-v2` 与 `halfcheetah-medium-v2` 基本正常，但 `hopper-medium-replay-v2` 稳定偏低；下一步优先解释和改进 replay 低分，而不是继续做大而全 sweep。
-- AutoDL 实例用于持续项目时只关机不释放，保留环境、D4RL 缓存、mujoco-py 编译结果和 W&B/Aim 配置。
+## Current Experimental Conclusion
 
-## 算法引入流程
+The exploration-stage baseline sweep is sufficient. Do **not** spend more mainline compute on broad baseline expansion unless Tree explicitly asks.
 
-新增算法（如组员想加 IQL / CQL / Cal-QL）：
-1. 阅读 `algorithms/README.md`
-2. 单文件 CORL-style 放进 `algorithms/<name>.py`
-3. CLI 接口对齐 `algorithms/bc.py`
-4. 先按当前阶段策略跑 30k/50k one-step smoke；有信号后再跑 100k/1M 和多 seed
+Key `hopper-medium-replay-v2`, seed 0 results:
 
-## 失败排查顺序
+| System | Final | Best | Current Role |
+|--------|------:|-----:|--------------|
+| TD3+BC | 22.43 | 22.43 | weak anchor |
+| TD3+BC alpha5 | 21.95 | 21.95 | do not expand |
+| ReBRAC-lite 50k | 34.48 | 34.48 | simple strong baseline |
+| ReBRAC-lite 100k | 36.54 | 54.36 | simple baseline with spikes |
+| PRDC official source 50k | 23.54 | 23.54 | reference only; do not expand now |
+| A2PR official source 50k | 22.31 | 22.81 | reference only; do not expand now |
+| SSAR full-IQL 50k | 38.56 | 43.97 | strongest modern baseline after full IQL-qv |
+| SSAR cached-IQL 100k | 92.44 | 100.98 | strongest current signal, but 5-episode eval and one seed |
+| cheap SSAR without IQL selection 100k | 25.48 | 30.34 | ablation showing IQL-qv selection is critical |
 
+Main takeaway:
+
+> The likely contribution is not another baseline table. It is a cheaper, stable, reproducible replacement or amortization strategy for SSAR's expensive IQL-qv trusted-action selection.
+
+## Current TODO
+
+The next agent should work on contribution exploration, not baseline collection.
+
+1. Design 2-3 cheap trusted-action selector candidates.
+   - Possible directions: short critic warmup, return-ranked trajectory filter, behavior-consistency filter, Q-gap proxy.
+2. Implement one minimal selector in local editable code.
+   - Prefer compatibility with current `common/` data and eval APIs.
+   - Keep output as a trusted mask, beta weight, or selector artifact that can be compared against SSAR.
+3. Run only `hopper-medium-replay-v2`, seed 0, 50k/100k first.
+   - Compare against TD3+BC, ReBRAC-lite, cheap SSAR no-IQL, and SSAR cached.
+4. Only if this local selector has signal, run seed1 or a second replay env.
+
+Do not unblock multi-seed/multi-env until a local selector beats ReBRAC-lite or clearly narrows the gap to SSAR.
+
+## Explicitly Deferred
+
+- PRDC multi-seed / multi-env expansion
+- A2PR multi-seed / multi-env expansion
+- 6 D4RL env x 3 seed table
+- more TD3+BC alpha sweeps
+- full paper-ready seed sweep before there is a contribution mechanism
+
+Reason: these are expensive and currently unlikely to create the paper contribution.
+
+## AutoDL / Cache Discipline
+
+AutoDL is used as a retained project instance. If continuing this project, **power off but do not release** unless Tree explicitly asks to release.
+
+Known instance:
+
+- AutoDL instance id: `pro-7785f027d673`
+- Remote project: `/root/autodl-tmp/taoyao-rl/project`
+- Remote external sources: `/root/autodl-tmp/external_repos/`
+
+SSAR IQL-qv cache to preserve:
+
+- Primary: `/root/autodl-tmp/external_repos/SSAR/model/iql_qv/hopper-medium-replay-v2/0/0.7_model.pth`
+- Backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed0/0.7_model.pth`
+- SHA256: `dffa751dd22177b0161baa0bd5661517984644fbfe7afb27fb1065a3eb8c0579`
+
+Do not delete or overwrite this cache unless intentionally testing IQL-qv variance. A clean full IQL-qv run took about 62 minutes before the 50k offline training.
+
+Before launching remote runs:
+
+```bash
+/Users/robin/.agent-context/skills/autodl-pro/scripts/autodl-dev.sh list
+/Users/robin/.agent-context/skills/autodl-pro/scripts/autodl-dev.sh ssh pro-7785f027d673 -- 'nvidia-smi'
 ```
-环境问题  → 跑 smoke_test.py 看哪一级挂
-数据问题  → 检查 D4RLDataset.size 和 shape 是否符合预期
-训练不收敛 → 检查 set_seed 是否被调用，是否在 dataset 之前
-分数偏低  → 对比 configs/shared.yaml > expected_scores
+
+## Source Code Policy
+
+Use official source during exploration, but keep licensing clean.
+
+- A2PR has MIT license; small patches can be considered later.
+- PRDC and SSAR had no license file in the checked source; run them as external source checkouts, but do not vendor their code into the public GitHub repo unless licensing is clarified.
+- Compatibility-only local patches are allowed for reproduction:
+  - MuJoCo / `LD_PRELOAD`
+  - unused import cleanup
+  - logging / parser scripts
+  - eval step controls clearly labeled as smoke/localized
+- Do not call a modified result "official" if objective, architecture, replay semantics, reward normalization, or selection logic changes. Label it as `localized-variant`.
+
+## Codebase Rules
+
+For local algorithms in this repo:
+
+- Use `common.data.D4RLDataset` for D4RL loading.
+- Use `common.eval.eval_episodes` and `common.eval.write_result` for evaluation and JSONL output.
+- Use `common.seed.set_seed`.
+- Do not add new D4RL env names outside `envs.txt` without discussion.
+- Do not commit D4RL data, checkpoints, `.aim/`, `wandb/`, or raw experiment JSONL under `results/`.
+- Do not hardcode W&B keys, AutoDL tokens, personal SSH info, or proxy credentials.
+
+This project targets Linux + CUDA + Python 3.10. macOS is for editing and analysis, not main training.
+
+## Useful Commands
+
+Baseline smoke:
+
+```bash
+ENV=hopper-medium-replay-v2 SEED=0 STEPS=50000 bash scripts/run_c_track_smoke.sh
 ```
 
-## 不要做
+Mechanism ablation runner on retained AutoDL:
 
-- ❌ 在本目录引入 d3rlpy / Tianshou / stable-baselines3（除非作为 online baseline 单独工具）
-- ❌ 把 CORL 整个 framework 拷进来（只拷单个算法文件）
-- ❌ 给每个算法搞独立 conda env（全组共用一个 venv）
-- ❌ 自动 commit / push 代码（小组共享 repo，必须 review）
-- ❌ 把数据 / checkpoint 提交进 git（`.gitignore` 已配好）
+```bash
+bash scripts/run_mech_ablation_autodl.sh
+```
 
-## 与全局规则的关系
+This script runs:
 
-本项目运行在通用 Linux GPU 服务器上，**不依赖任何个人凭据 / proxy / token**。
-组员各自的 wandb account、SSH 配置、AutoDL token 等都在各人本地 `.env` 或用户级登录缓存里处理，不进本仓库。W&B 用 `wandb login` 做用户级配置，登录态由 W&B CLI 存在用户目录，所有项目可复用；不要把 W&B API key/token 明文写进 `AGENTS.md`、README、`.env.local` 或任何会提交的文件。
+- `SSAR_cached_100k`
+- `cheap_SSAR_no_iql_select_100k`
+- `ReBRAC_lite_100k`
+
+It is a record of the mechanism ablation, not the default next experiment. For next contribution work, implement a new cheap trusted selector instead of rerunning this script unchanged.
+
+## Experiment Logging
+
+- Aim is the default local tracker.
+- W&B is optional and user-level; credentials should be configured with `wandb login`, never committed.
+- For external-source runs, copy parsed JSON summaries into `refine-logs/remote-results/` instead of committing large raw logs or checkpoints.
+
+## Git / Sharing
+
+The public repo is used for sharing scripts, docs, and lightweight parsed results. Push useful docs and reusable scripts, but do not push private credentials, raw datasets, checkpoints, or no-license third-party source trees.
+
+When making a meaningful experiment decision, update:
+
+1. `refine-logs/EXPERIMENT_RESULTS.md`
+2. `refine-logs/EXPERIMENT_TRACKER.md`
+3. `refine-logs/SOURCE_REPRO_PLAN.md` if source/caching policy changes
+
+## Current Stop/Go Rule
+
+Stop doing baseline reproduction when it does not create a new mechanism insight. Go only when a run directly answers:
+
+- Can we replace IQL-qv trusted selection cheaply?
+- Can we amortize/cached-pretrain it safely?
+- Can a simple local selector approach SSAR while staying much cheaper?
+
+That is now the C-line project question.
