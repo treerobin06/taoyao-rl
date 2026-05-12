@@ -57,6 +57,11 @@ for RUN in $RUNS; do
     rebrac_lite)
       python -m algorithms.rebrac $COMMON_ARGS --batch_size 1024 --num_critics 2 --algo_name rebrac_lite $TRACKING_ARGS
       ;;
+    trusted_td3_bc_top20)
+      python -m algorithms.trusted_td3_bc $COMMON_ARGS --batch_size 256 \
+        --top_trajectory_fraction 0.2 --untrusted_bc_weight 0.05 \
+        --algo_name trusted_td3_bc_top20 $TRACKING_ARGS
+      ;;
     *)
       echo "Unknown RUN=$RUN" >&2
       exit 2

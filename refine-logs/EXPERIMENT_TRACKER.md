@@ -17,6 +17,7 @@
 | R013 | A1 | SSAR stability after 50k | SSAR cached IQL-qv | `hopper-medium-replay-v2`, seed0, 100k | normalized score curve | MUST | DONE | final 92.44, best 100.98 @90k; cache reuse works and SSAR remains strong |
 | R014 | A1 | isolate IQL-qv action selection | cheap SSAR no IQL selection | `hopper-medium-replay-v2`, seed0, 100k | normalized score curve | MUST | DONE | final 25.48, best 30.34 @90k; removing trusted selection collapses gains |
 | R015 | A1 | same-budget simple baseline | `rebrac_lite` | `hopper-medium-replay-v2`, seed0, 100k | normalized score curve | MUST | DONE | final 36.54, best 54.36 @90k; spikes but far below cached SSAR |
+| R016 | C1 | cheap local trusted selector | `trusted_td3_bc_top20` | `hopper-medium-replay-v2`, seed0, 50k | normalized score curve | MUST | READY | return-ranked top-20% trajectory trust mask implemented; launch first go/no-go smoke next |
 
 ## Next Contribution TODO
 
@@ -24,9 +25,9 @@ Current decision: baseline/reproduction is sufficient for exploration. Do not ex
 
 | TODO ID | Task | Why | First Run / Output | Status | Notes |
 |---------|------|-----|--------------------|--------|-------|
-| T001 | Design cheap trusted-action selector candidates | This is the likely contribution: approximate SSAR's IQL-qv selection without 1M-step pretraining | short design note with 2-3 selectors and expected behavior | TODO | candidates: short critic warmup, return-ranked trajectory filter, behavior-consistency filter, Q-gap proxy |
-| T002 | Implement one minimal selector in local code | Need an editable/local mechanism, not just external SSAR reproduction | config/script that produces trusted mask or beta weights | TODO | keep objective/logging compatible with current TD3+BC/ReBRAC-style code |
-| T003 | Run seed0 `hopper-medium-replay-v2` 50k/100k for the selector | Fast go/no-go for contribution signal | compare against TD3+BC, ReBRAC-lite, cheap SSAR no-IQL, SSAR cached | TODO | use 5 eval episodes first; increase eval episodes only for promising runs |
+| T001 | Design cheap trusted-action selector candidates | This is the likely contribution: approximate SSAR's IQL-qv selection without 1M-step pretraining | short design note with 2-3 selectors and expected behavior | DONE | see `refine-logs/TRUSTED_SELECTOR_PLAN.md`; first candidate is return-ranked trajectory trust |
+| T002 | Implement one minimal selector in local code | Need an editable/local mechanism, not just external SSAR reproduction | config/script that produces trusted mask or beta weights | DONE | `algorithms/trusted_td3_bc.py`; `python3 -m py_compile` passed |
+| T003 | Run seed0 `hopper-medium-replay-v2` 50k/100k for the selector | Fast go/no-go for contribution signal | compare against TD3+BC, ReBRAC-lite, cheap SSAR no-IQL, SSAR cached | READY | use 5 eval episodes first; increase eval episodes only for promising runs |
 | T004 | Add cache discipline for SSAR/IQL-qv | Avoid paying the 1-hour IQL-qv cost repeatedly | documented cache path + checksum + reuse script | PARTIAL | seed0 cache exists and is backed up; next env/seed needs same convention |
 | T005 | Only after a positive local selector signal, run seed1 or second replay env | Stability validation should follow contribution signal, not replace it | seed1 on `hopper-medium-replay-v2` or one second replay env | BLOCKED | unblock only if T003 beats ReBRAC-lite or clearly narrows gap to SSAR |
 
