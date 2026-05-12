@@ -8,6 +8,7 @@
 |---|---|---|
 | `bc.py` | Behavior Cloning | smoke test 用，验证 pipeline |
 | `td3_bc.py` | TD3+BC | C 线第一个 offline RL baseline |
+| `rebrac.py` | ReBRAC-style | 探索期 policy regularization smoke，不等同完整官方 JAX 复现 |
 
 ## 待引入（按小组分工）
 
@@ -15,7 +16,7 @@
 
 | 算法 | 原仓库 | License | 引入方式 |
 |---|---|---|---|
-| **ReBRAC** | tinkoff-ai/CORL `algorithms/offline/rebrac.py` | Apache-2.0 | 拷贝 + 加 `common.eval`/`ExperimentLogger` 替换原 eval/logger |
+| **ReBRAC** | tinkoff-ai/CORL `algorithms/offline/rebrac.py` | Apache-2.0 | 已有 PyTorch lite smoke；若有信号再做完整官方/严格复现 |
 | **PRDC** | LAMDA-RL/PRDC | 无 license | 改写成单文件 CORL-style |
 | **A2PR** | ltlhuuu/A2PR | MIT | 改写成单文件 CORL-style |
 

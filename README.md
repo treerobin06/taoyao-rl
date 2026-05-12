@@ -204,6 +204,16 @@ bash scripts/run_bc.sh
 - 这个修复让数据口径与官方 TD3+BC / CORL 实现一致。真实 D4RL 数据核对：`hopper-medium-replay-v2` 为 401,598 条 transition，`halfcheetah-medium-v2` 为 999,000 条 transition。
 - 旧版本直接信任 raw dataset 时会多包含 timeout 边界 transition；如果本地分支较旧，请先拉取最新代码再跑实验。
 
+### C 线四路 smoke
+
+探索阶段的下一轮筛选固定为一个 replay env、一个 seed、四个系统：
+
+```bash
+ENV=hopper-medium-replay-v2 SEED=0 STEPS=50000 bash scripts/run_c_track_smoke.sh
+```
+
+默认会依次运行 `bc`、`td3_bc`、`td3_bc_alpha5`、`rebrac_lite`，结果写入 `results/c_track_smoke/`。详细 claim-driven 计划和执行表见 `refine-logs/EXPERIMENT_PLAN.md` 与 `refine-logs/EXPERIMENT_TRACKER.md`。
+
 ### 实验追踪：Aim + W&B
 
 本仓库默认使用：

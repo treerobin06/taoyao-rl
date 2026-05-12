@@ -1,15 +1,12 @@
-"""TD3+BC baseline for D4RL MuJoCo.
+"""ReBRAC-style policy regularization baseline for D4RL MuJoCo.
 
-This is the first real C-track algorithm implementation in the shared project
-pipeline. It keeps the interface aligned with ``algorithms/bc.py`` and uses the
-shared D4RL dataset / evaluator / result writer.
+This is a compact PyTorch implementation for early C-track smoke tests. It keeps
+the project interface aligned with ``bc.py`` / ``td3_bc.py`` and uses the shared
+``D4RLDataset`` for timeout-safe transitions plus next-action targets.
 
 Reference:
-    Fujimoto and Gu, A Minimalist Approach to Offline Reinforcement Learning,
-    NeurIPS 2021.
-
-Usage:
-    python -m algorithms.td3_bc --env hopper-medium-v2 --seed 0 --steps 100000
+    Tarasov et al., ReBRAC: ReBehavior Cloning Regularization for Offline RL,
+    arXiv 2023.
 """
 from __future__ import annotations
 
@@ -38,69 +35,86 @@ from common import (
 )
 
 
-def mlp(in_dim: int, out_dim: int, hidden: int, n_layers: int = 2,
-        output_activation: Optional[nn.Module] = None) -> nn.Sequential:
-    layers: list[nn.Module] = [nn.Linear(in_dim, hidden), nn.ReLU()]
-    for _ in range(n_layers - 1):
-        layers += [nn.Linear(hidden, hidden), nn.ReLU()]
-    layers.append(nn.Linear(hidden, out_dim))
+def mlp(in_dim: int, out_dim: int, hidden: int, n_layers: int,
+        layernorm: bool = False, output_activation: Optional[nn.Module] = None) -> nn.Sequential:
+    layers: list[nn.Module] = []
+    dim = in_dim
+    for _ in range(n_layers):
+        layers.append(nn.Linear(dim, hidden))
+        layers.append(nn.ReLU())
+        if layernorm:
+            layers.append(nn.LayerNorm(hidden))
+        dim = hidden
+    layers.append(nn.Linear(dim, out_dim))
     if output_activation is not None:
         layers.append(output_activation)
     return nn.Sequential(*layers)
 
 
 class Actor(nn.Module):
-    def __init__(self, obs_dim: int, act_dim: int, max_action: float, hidden: int = 256):
+    def __init__(self, obs_dim: int, act_dim: int, max_action: float,
+                 hidden: int, n_layers: int, layernorm: bool):
         super().__init__()
         self.max_action = float(max_action)
-        self.net = mlp(obs_dim, act_dim, hidden, output_activation=nn.Tanh())
+        self.net = mlp(obs_dim, act_dim, hidden, n_layers, layernorm, nn.Tanh())
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         return self.max_action * self.net(obs)
 
 
-class Critic(nn.Module):
-    def __init__(self, obs_dim: int, act_dim: int, hidden: int = 256):
+class CriticEnsemble(nn.Module):
+    def __init__(self, obs_dim: int, act_dim: int, hidden: int,
+                 n_layers: int, layernorm: bool, num_critics: int):
         super().__init__()
-        self.q1 = mlp(obs_dim + act_dim, 1, hidden)
-        self.q2 = mlp(obs_dim + act_dim, 1, hidden)
+        self.qs = nn.ModuleList([
+            mlp(obs_dim + act_dim, 1, hidden, n_layers, layernorm)
+            for _ in range(num_critics)
+        ])
 
-    def forward(self, obs: torch.Tensor, act: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
         x = torch.cat([obs, act], dim=-1)
-        return self.q1(x), self.q2(x)
-
-    def q1_only(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
-        return self.q1(torch.cat([obs, act], dim=-1))
+        return torch.stack([q(x) for q in self.qs], dim=0)
 
 
 @dataclass
-class TD3BCConfig:
+class ReBRACConfig:
     discount: float = 0.99
     tau: float = 0.005
     policy_noise: float = 0.2
     noise_clip: float = 0.5
     policy_freq: int = 2
-    alpha: float = 2.5
-    actor_lr: float = 3e-4
-    critic_lr: float = 3e-4
+    actor_bc_coef: float = 1.0
+    critic_bc_coef: float = 1.0
+    actor_lr: float = 1e-3
+    critic_lr: float = 1e-3
     hidden: int = 256
-    normalize_obs: bool = True
+    actor_layers: int = 3
+    critic_layers: int = 3
+    num_critics: int = 2
+    actor_ln: bool = False
+    critic_ln: bool = True
+    normalize_obs: bool = False
+    normalize_q: bool = True
 
 
-class TD3BCAgent:
+class ReBRACAgent:
     def __init__(self, obs_dim: int, act_dim: int, max_action: float,
-                 config: TD3BCConfig, device: str = "cpu",
+                 config: ReBRACConfig, device: str = "cpu",
                  obs_mean: np.ndarray | None = None, obs_std: np.ndarray | None = None):
         self.device = device
         self.config = config
         self.max_action = float(max_action)
 
-        self.actor = Actor(obs_dim, act_dim, max_action, config.hidden).to(device)
-        self.actor_target = Actor(obs_dim, act_dim, max_action, config.hidden).to(device)
+        self.actor = Actor(obs_dim, act_dim, max_action, config.hidden,
+                           config.actor_layers, config.actor_ln).to(device)
+        self.actor_target = Actor(obs_dim, act_dim, max_action, config.hidden,
+                                  config.actor_layers, config.actor_ln).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
-        self.critic = Critic(obs_dim, act_dim, config.hidden).to(device)
-        self.critic_target = Critic(obs_dim, act_dim, config.hidden).to(device)
+        self.critic = CriticEnsemble(obs_dim, act_dim, config.hidden, config.critic_layers,
+                                     config.critic_ln, config.num_critics).to(device)
+        self.critic_target = CriticEnsemble(obs_dim, act_dim, config.hidden, config.critic_layers,
+                                            config.critic_ln, config.num_critics).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=config.actor_lr)
@@ -112,11 +126,11 @@ class TD3BCAgent:
 
     def update(self, batch: dict) -> dict:
         self.total_it += 1
-
         obs = batch["obs"]
         act = batch["act"]
         rew = batch["rew"]
         next_obs = batch["next_obs"]
+        next_act_data = batch["next_act"]
         done = batch["done"]
 
         with torch.no_grad():
@@ -124,12 +138,13 @@ class TD3BCAgent:
                 -self.config.noise_clip, self.config.noise_clip
             )
             next_act = (self.actor_target(next_obs) + noise).clamp(-self.max_action, self.max_action)
-            target_q1, target_q2 = self.critic_target(next_obs, next_act)
-            target_q = torch.min(target_q1, target_q2)
+            target_q = self.critic_target(next_obs, next_act).min(dim=0).values
+            critic_bc = ((next_act - next_act_data) ** 2).sum(dim=-1, keepdim=True)
+            target_q = target_q - self.config.critic_bc_coef * critic_bc
             target_q = rew + (1.0 - done) * self.config.discount * target_q
 
-        cur_q1, cur_q2 = self.critic(obs, act)
-        critic_loss = F.mse_loss(cur_q1, target_q) + F.mse_loss(cur_q2, target_q)
+        cur_q = self.critic(obs, act)
+        critic_loss = ((cur_q - target_q.unsqueeze(0)) ** 2).mean(dim=(1, 2)).sum()
 
         self.critic_opt.zero_grad()
         critic_loss.backward()
@@ -137,14 +152,17 @@ class TD3BCAgent:
 
         info = {
             "critic_loss": float(critic_loss.item()),
-            "q_mean": float(cur_q1.detach().mean().item()),
+            "q_min": float(cur_q.detach().min(dim=0).values.mean().item()),
         }
 
         if self.total_it % self.config.policy_freq == 0:
             pi = self.actor(obs)
-            q = self.critic.q1_only(obs, pi)
-            lam = self.config.alpha / q.abs().mean().detach().clamp(min=1e-6)
-            actor_loss = -lam * q.mean() + F.mse_loss(pi, act)
+            q = self.critic(obs, pi).min(dim=0).values
+            lam = 1.0
+            if self.config.normalize_q:
+                lam = 1.0 / q.abs().mean().detach().clamp(min=1e-6)
+            actor_bc = ((pi - act) ** 2).sum(dim=-1, keepdim=True)
+            actor_loss = (self.config.actor_bc_coef * actor_bc - lam * q).mean()
 
             self.actor_opt.zero_grad()
             actor_loss.backward()
@@ -155,8 +173,8 @@ class TD3BCAgent:
 
             info.update({
                 "actor_loss": float(actor_loss.item()),
-                "bc_loss": float(F.mse_loss(pi.detach(), act).item()),
-                "lambda": float(lam.item()),
+                "bc_mse_policy": float(actor_bc.detach().mean().item()),
+                "lambda": float(lam.item() if isinstance(lam, torch.Tensor) else lam),
             })
 
         return info
@@ -175,8 +193,8 @@ class TD3BCAgent:
 
 def train(env_name: str, seed: int, steps: int, batch_size: int,
           eval_freq: int, eval_episodes_n: int, result_dir: str,
-          use_aim: bool, use_wandb: bool, config: TD3BCConfig,
-          algo_name: str = "td3_bc"):
+          use_aim: bool, use_wandb: bool, config: ReBRACConfig,
+          algo_name: str = "rebrac_lite"):
     set_seed(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -186,7 +204,7 @@ def train(env_name: str, seed: int, steps: int, batch_size: int,
     max_action = float(env.action_space.high[0])
 
     dataset = D4RLDataset(env, device=device, normalize_obs=config.normalize_obs)
-    agent = TD3BCAgent(
+    agent = ReBRACAgent(
         obs_dim, act_dim, max_action, config, device=device,
         obs_mean=dataset.obs_mean.squeeze(0),
         obs_std=dataset.obs_std.squeeze(0),
@@ -198,18 +216,18 @@ def train(env_name: str, seed: int, steps: int, batch_size: int,
         seed=seed,
         use_aim=use_aim,
         use_wandb=use_wandb,
-        config=dict(algo=algo_name, base_algo="td3_bc", env=env_name, seed=seed, steps=steps, **asdict(config)),
+        config=dict(algo=algo_name, base_algo="rebrac", env=env_name, seed=seed, steps=steps, **asdict(config)),
     )
 
     print(f"[{algo_name}] {env_name} | seed={seed} | device={device} | obs={obs_dim} act={act_dim}")
-    print(f"         steps={steps:,} batch={batch_size} normalize_obs={config.normalize_obs}")
+    print(f"         steps={steps:,} batch={batch_size} critics={config.num_critics} "
+          f"actor_bc={config.actor_bc_coef} critic_bc={config.critic_bc_coef}")
     t0 = time.time()
     last_info: dict = {}
 
     try:
         for step in range(1, steps + 1):
             last_info = agent.update(dataset.sample(batch_size))
-
             if step % eval_freq == 0 or step == steps:
                 metrics = eval_episodes(agent, eval_env, n_episodes=eval_episodes_n)
                 write_result(result_dir, algo_name, env_name, seed, step, "offline", metrics)
@@ -232,37 +250,51 @@ def main():
     parser.add_argument("--env", default="hopper-medium-v2")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--steps", type=int, default=100_000)
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--eval_freq", type=int, default=5_000)
+    parser.add_argument("--batch_size", type=int, default=1024)
+    parser.add_argument("--eval_freq", type=int, default=10_000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--result_dir", default="results")
-    parser.add_argument("--algo_name", default="td3_bc")
+    parser.add_argument("--algo_name", default="rebrac_lite")
     parser.add_argument("--aim", action="store_true", help="启用 Aim local tracking")
     parser.add_argument("--wandb", action="store_true", help="启用 wandb logging")
 
     parser.add_argument("--hidden", type=int, default=256)
+    parser.add_argument("--actor_layers", type=int, default=3)
+    parser.add_argument("--critic_layers", type=int, default=3)
+    parser.add_argument("--num_critics", type=int, default=2)
     parser.add_argument("--discount", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--policy_noise", type=float, default=0.2)
     parser.add_argument("--noise_clip", type=float, default=0.5)
     parser.add_argument("--policy_freq", type=int, default=2)
-    parser.add_argument("--alpha", type=float, default=2.5)
-    parser.add_argument("--actor_lr", type=float, default=3e-4)
-    parser.add_argument("--critic_lr", type=float, default=3e-4)
-    parser.add_argument("--no_normalize_obs", action="store_true")
+    parser.add_argument("--actor_bc_coef", type=float, default=1.0)
+    parser.add_argument("--critic_bc_coef", type=float, default=1.0)
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=1e-3)
+    parser.add_argument("--actor_ln", action="store_true")
+    parser.add_argument("--no_critic_ln", action="store_true")
+    parser.add_argument("--normalize_obs", action="store_true")
+    parser.add_argument("--no_normalize_q", action="store_true")
     args = parser.parse_args()
 
-    config = TD3BCConfig(
+    config = ReBRACConfig(
         discount=args.discount,
         tau=args.tau,
         policy_noise=args.policy_noise,
         noise_clip=args.noise_clip,
         policy_freq=args.policy_freq,
-        alpha=args.alpha,
+        actor_bc_coef=args.actor_bc_coef,
+        critic_bc_coef=args.critic_bc_coef,
         actor_lr=args.actor_lr,
         critic_lr=args.critic_lr,
         hidden=args.hidden,
-        normalize_obs=not args.no_normalize_obs,
+        actor_layers=args.actor_layers,
+        critic_layers=args.critic_layers,
+        num_critics=args.num_critics,
+        actor_ln=args.actor_ln,
+        critic_ln=not args.no_critic_ln,
+        normalize_obs=args.normalize_obs,
+        normalize_q=not args.no_normalize_q,
     )
     train(args.env, args.seed, args.steps, args.batch_size,
           args.eval_freq, args.eval_episodes, args.result_dir,

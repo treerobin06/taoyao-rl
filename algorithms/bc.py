@@ -66,7 +66,8 @@ class BCAgent:
 
 def train(env_name: str, seed: int, steps: int, batch_size: int,
           eval_freq: int, eval_episodes_n: int, hidden: int,
-          result_dir: str, use_aim: bool, use_wandb: bool):
+          result_dir: str, use_aim: bool, use_wandb: bool,
+          algo_name: str = "bc"):
 
     set_seed(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -79,15 +80,15 @@ def train(env_name: str, seed: int, steps: int, batch_size: int,
     agent = BCAgent(obs_dim, act_dim, hidden=hidden, device=device)
 
     logger = ExperimentLogger(
-        algo="bc",
+        algo=algo_name,
         env_name=env_name,
         seed=seed,
         use_aim=use_aim,
         use_wandb=use_wandb,
-        config=dict(algo="bc", env=env_name, seed=seed, steps=steps, hidden=hidden),
+        config=dict(algo=algo_name, base_algo="bc", env=env_name, seed=seed, steps=steps, hidden=hidden),
     )
 
-    print(f"[BC] {env_name} | seed={seed} | device={device} | obs={obs_dim} act={act_dim}")
+    print(f"[{algo_name}] {env_name} | seed={seed} | device={device} | obs={obs_dim} act={act_dim}")
     t0 = time.time()
 
     try:
@@ -97,7 +98,7 @@ def train(env_name: str, seed: int, steps: int, batch_size: int,
 
             if step % eval_freq == 0 or step == steps:
                 metrics = eval_episodes(agent, eval_env, n_episodes=eval_episodes_n)
-                write_result(result_dir, "bc", env_name, seed, step,
+                write_result(result_dir, algo_name, env_name, seed, step,
                              "offline", metrics)
                 elapsed = time.time() - t0
                 log = {**info, **metrics, "step": step}
@@ -119,13 +120,14 @@ def main():
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--hidden", type=int, default=256)
     parser.add_argument("--result_dir", default="results")
+    parser.add_argument("--algo_name", default="bc")
     parser.add_argument("--aim", action="store_true", help="启用 Aim local tracking")
     parser.add_argument("--wandb", action="store_true", help="启用 wandb logging")
     args = parser.parse_args()
 
     train(args.env, args.seed, args.steps, args.batch_size,
           args.eval_freq, args.eval_episodes, args.hidden,
-          args.result_dir, args.aim, args.wandb)
+          args.result_dir, args.aim, args.wandb, args.algo_name)
 
 
 if __name__ == "__main__":

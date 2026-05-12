@@ -61,6 +61,7 @@ class D4RLDataset:
         self.observations = ds["observations"].astype(np.float32)
         self.actions      = ds["actions"].astype(np.float32)
         self.next_obs     = ds["next_observations"].astype(np.float32)
+        self.next_actions = ds.get("next_actions", np.zeros_like(ds["actions"])).astype(np.float32)
         self.rewards      = ds["rewards"].astype(np.float32)
         self.dones        = ds["terminals"].astype(np.float32)
 
@@ -85,6 +86,7 @@ class D4RLDataset:
         return {
             "obs":      torch.from_numpy(self.observations[idx]).to(self.device),
             "act":      torch.from_numpy(self.actions[idx]).to(self.device),
+            "next_act": torch.from_numpy(self.next_actions[idx]).to(self.device),
             "rew":      torch.from_numpy(self.rewards[idx]).to(self.device).unsqueeze(-1),
             "next_obs": torch.from_numpy(self.next_obs[idx]).to(self.device),
             "done":     torch.from_numpy(self.dones[idx]).to(self.device).unsqueeze(-1),
@@ -98,7 +100,10 @@ class D4RLDataset:
         """Return obs/action/next_obs/reward/done with timeout boundaries handled."""
         if env is not None and hasattr(d4rl, "qlearning_dataset"):
             try:
-                return d4rl.qlearning_dataset(env, dataset=ds)
+                out = d4rl.qlearning_dataset(env, dataset=ds)
+                if "next_actions" not in out and "actions" in ds:
+                    out["next_actions"] = D4RLDataset._infer_next_actions(env, ds)
+                return out
             except Exception:
                 if "next_observations" not in ds:
                     raise
@@ -128,3 +133,32 @@ class D4RLDataset:
             "rewards": np.asarray(rewards),
             "terminals": np.asarray(terminals),
         }
+
+    @staticmethod
+    def _infer_next_actions(env, ds: dict) -> np.ndarray:
+        """Infer next_actions with the same timeout filtering as qlearning_dataset."""
+        n = ds["rewards"].shape[0]
+        use_timeouts = "timeouts" in ds
+        episode_step = 0
+        max_episode_steps = getattr(env, "_max_episode_steps", None)
+        next_actions = []
+
+        for i in range(n - 1):
+            if use_timeouts:
+                final_timestep = bool(ds["timeouts"][i])
+            elif max_episode_steps is not None:
+                final_timestep = episode_step == max_episode_steps - 1
+            else:
+                final_timestep = False
+
+            if final_timestep:
+                episode_step = 0
+                continue
+
+            next_actions.append(ds["actions"][i + 1])
+            if bool(ds["terminals"][i]):
+                episode_step = 0
+            else:
+                episode_step += 1
+
+        return np.asarray(next_actions)
