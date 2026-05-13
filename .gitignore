@@ -21,6 +21,12 @@ results/figures/
 .aim/
 wandb/
 
+# 远程实验缓存 / 标签文件（只提交轻量 jsonl/summary，不提交 teacher-label npz）
+refine-logs/remote-results/**/*.npz
+refine-logs/remote-results/**/*.pt
+refine-logs/remote-results/**/*.pth
+refine-logs/remote-results/**/*.ckpt
+
 # D4RL 缓存（每人本地自动下，不 commit）
 .d4rl/
 
@@ -46,3 +52,14 @@ Thumbs.db
 *.log
 *.tmp
 nohup.out
+
+# LaTeX build artifacts / local sync worktrees
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+paper-overleaf/
+paper-sjtu-sync/
+paper-sjtu-rl-sync/

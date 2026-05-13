@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "timestamp": "2026-05-13T21:35:22+08:00",
+  "best_image": "figures/ai_generated/figure_v1.png",
+  "final_image": "figures/ai_generated/figure_final.png",
+  "score": 9.0,
+  "review_summary": "Accepted after strict review: all major components are present, arrows are correct, labels are readable, and the figure communicates offline trusted-action distillation plus online release/fixed-constraint split."
+}

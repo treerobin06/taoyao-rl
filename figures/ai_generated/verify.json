@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "timestamp": "2026-05-13T21:35:22+08:00",
+  "workspace": "/Users/robin/Desktop/taoyao/RL/project",
+  "checks": {
+    "final_image_exists": true,
+    "final_image_nonempty": true,
+    "latex_include_exists": true,
+    "review_log_exists": true,
+    "preflight_exists": true
+  },
+  "artifacts": {
+    "final_image": "figures/ai_generated/figure_final.png",
+    "latex_include": "figures/ai_generated/latex_include.tex",
+    "review_log": "figures/ai_generated/review_log.json",
+    "preflight": "figures/ai_generated/preflight.json"
+  }
+}

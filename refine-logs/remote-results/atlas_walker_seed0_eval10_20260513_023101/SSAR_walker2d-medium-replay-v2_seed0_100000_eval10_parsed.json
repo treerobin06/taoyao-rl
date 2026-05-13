@@ -1,0 +1,75 @@
+{
+  "name": "SSAR_walker2d-medium-replay-v2_seed0_100000_eval10",
+  "env": "walker2d-medium-replay-v2",
+  "seed": 0,
+  "offline_steps": 100000,
+  "eval_freq": 10000,
+  "eval_episodes": 10,
+  "log": "/root/autodl-tmp/external_quick_logs/ssar_walker_seed0_eval10_20260513_011127/SSAR_walker2d-medium-replay-v2_seed0_100000_eval10.log",
+  "cache_backup": "/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/walker2d-medium-replay-v2/seed0",
+  "scores": [
+    {
+      "step": 10000,
+      "episodes": 10,
+      "raw_return": 618.557,
+      "normalized_score": 13.439
+    },
+    {
+      "step": 20000,
+      "episodes": 10,
+      "raw_return": 472.236,
+      "normalized_score": 10.251
+    },
+    {
+      "step": 30000,
+      "episodes": 10,
+      "raw_return": 872.901,
+      "normalized_score": 18.979
+    },
+    {
+      "step": 40000,
+      "episodes": 10,
+      "raw_return": 4344.586,
+      "normalized_score": 94.604
+    },
+    {
+      "step": 50000,
+      "episodes": 10,
+      "raw_return": 4274.994,
+      "normalized_score": 93.088
+    },
+    {
+      "step": 60000,
+      "episodes": 10,
+      "raw_return": 4184.527,
+      "normalized_score": 91.117
+    },
+    {
+      "step": 70000,
+      "episodes": 10,
+      "raw_return": 3983.146,
+      "normalized_score": 86.731
+    },
+    {
+      "step": 80000,
+      "episodes": 10,
+      "raw_return": 4127.558,
+      "normalized_score": 89.876
+    },
+    {
+      "step": 90000,
+      "episodes": 10,
+      "raw_return": 4293.98,
+      "normalized_score": 93.502
+    },
+    {
+      "step": 100000,
+      "episodes": 10,
+      "raw_return": 4329.631,
+      "normalized_score": 94.278
+    }
+  ],
+  "final": 94.278,
+  "best": 94.604,
+  "best_step": 40000
+}

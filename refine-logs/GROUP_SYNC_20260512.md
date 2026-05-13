@@ -1,141 +1,118 @@
-# RL 项目阶段同步：实验结论与下一步策略
+# RL 项目组会 Brief
 
 **日期**：2026-05-12  
-**当前阶段**：探索阶段，不是最终 paper-ready 全量复现阶段
+**定位**：项目级同步，不是 C 方向单独汇报  
+**当前阶段**：探索期；先找有效机制，不急着做 paper-ready 全量表
 
-## 一句话结论
+## 1. 核心结论
 
-我们已经完成了足够的基础 baseline / 官方源码筛选。接下来不建议继续做 6 个数据集、多 seed、大规模 baseline sweep；更应该围绕 SSAR 的核心机制做贡献探索：**能否用更便宜、更稳定、更容易复现的方法替代或摊销 SSAR 中昂贵的 IQL-qv trusted action selection**。
+我们已经把统一实验底座跑通，也完成了一轮小规模 pilot。当前最重要的判断是：
 
-## 为什么先选 `hopper-medium-replay-v2`
+> 不建议现在直接做 6 env x 3 seeds 的大 baseline 表。下一步应先统一实验协议，用单环境、单 seed、短训练快速筛出真正有机制信号的方法；有信号后再补 seed 和更多数据集。
 
-这轮实验统一选 `hopper-medium-replay-v2`、seed 0，是因为它适合做探索阶段的“压力测试”：
+## 2. 项目已完成的公共基础
 
-- TD3+BC 在 medium 类环境上大致正常，但在 replay 数据上明显偏低，更容易暴露方法差异。
-- replay 数据更贴近 C 方向关心的问题：policy regularization / behavior regularization 对低质量、混合质量数据是否真的有帮助。
-- 单环境单 seed 能快速筛掉没信号的方法，避免一开始就把算力花在 6 env x 3 seeds 上。
+- 统一 D4RL loader：`common.data.D4RLDataset`
+- 统一 evaluator：`common.eval.eval_episodes`
+- 统一结果 JSONL：`common.eval.write_result`
+- 统一 normalized score / seed / eval episode 口径
+- AutoDL 环境已搭好，可关机保留、下次继续用
+- Aim 可本地看曲线，W&B 可选
 
-所以这个选择不是为了最终结论，而是为了快速判断“哪条机制值得继续”。
+这意味着 A/B/C 各方向后续应该接同一个 pipeline，不要各写各的 loader 和 evaluator。
 
-## 已完成实验
+## 3. 当前最关键的实验事实
 
-### 1. 统一数据和评估口径
+第一轮 pilot 统一用 `hopper-medium-replay-v2`、seed0，目的是快速筛方向，不是最终论文结论。
 
-我们先修正并核对了 D4RL loader，统一走 `d4rl.qlearning_dataset`，避免 timeout 边界处理不一致导致结果不可比。
+### 基础 anchor
 
-已核对：
-
-| 数据集 | transition 数 |
-|--------|---------------:|
-| `hopper-medium-replay-v2` | 401,598 |
-| `halfcheetah-medium-v2` | 999,000 |
-
-### 2. 基础本地 baseline / variant
-
-设置：`hopper-medium-replay-v2`，seed 0，50k steps，eval every 10k，5 eval episodes。
-
-| 方法 | Final normalized score | Best | 结论 |
-|------|------------------------:|-----:|------|
-| BC | 17.86 | 32.26 | 便宜 anchor，但波动大 |
-| TD3+BC | 22.43 | 22.43 | replay 上偏低，是弱 anchor |
-| TD3+BC alpha5 | 21.95 | 21.95 | 简单增强 Q 项没有帮助 |
-| ReBRAC-lite | 34.48 | 34.48 | 有正信号，作为简单强 baseline 保留 |
-
-### 3. 官方源码方法筛选
-
-同样先只跑 `hopper-medium-replay-v2`、seed 0、50k。
-
-| 方法 | Final | Best | 结论 |
+| 方法 | Final | Best | 判断 |
 |------|------:|-----:|------|
-| PRDC official source | 23.54 | 23.54 | 基本只略高于 TD3+BC，暂不扩 |
-| A2PR official source | 22.31 | 22.81 | 没有明显超过 TD3+BC，暂不扩 |
-| SSAR official source-localized | 38.56 | 43.97 | 当前最强现代 baseline，但 full IQL-qv 预筛较贵 |
+| TD3+BC | 22.43 | 22.43 | replay 上偏低，作为弱 anchor |
+| ReBRAC-lite | 34.48 | 34.48 | 简单强 baseline，应保留 |
 
-### 4. 机制 ablation
+### 官方源码筛选
 
-为了判断 SSAR 的收益来自哪里，我们做了 100k 的机制对照。
-
-| 变体 | Final | Best | 结论 |
+| 方法 | Final | Best | 判断 |
 |------|------:|-----:|------|
-| SSAR cached IQL-qv | 92.44 | 100.98 | 复用完整 IQL-qv cache 后非常强 |
-| cheap SSAR without IQL selection | 25.48 | 30.34 | 去掉 IQL-qv trusted action selection 后基本掉回弱 baseline |
-| ReBRAC-lite 100k | 36.54 | 54.36 | 简单 regularization 有信号，但不接近完整 SSAR |
+| PRDC | 23.54 | 23.54 | 暂无明显信号 |
+| A2PR | 22.31 | 22.81 | 暂无明显信号 |
+| SSAR | 38.56 | 43.97 | 当前最强现代 baseline，但预筛成本高 |
 
-这个结果说明：SSAR 的高分很大程度来自 IQL-qv trusted action selection。这个环节不是可有可无的工程细节，而是当前最重要的机制线索。
+### SSAR 机制结果
 
-## 为什么现在不建议多 seed / 多数据集
+| 变体 | Final | Best | 判断 |
+|------|------:|-----:|------|
+| SSAR cached IQL-qv | 92.44 | 100.98 | 非常强 |
+| SSAR 去掉 IQL selection | 25.48 | 30.34 | 明显掉分 |
+| ReBRAC-lite 100k | 36.54 | 54.36 | 有信号，但离 SSAR 远 |
 
-目前多 seed / 多数据集不是完全没意义，而是**时机还没到**。
+项目级含义：**高质量 value / trusted-action selection 信号可能是最值得研究的机制**，比单纯扩大 baseline 表更重要。
 
-原因：
+### 补充公共 value baseline
 
-- PRDC / A2PR 在 seed0 50k 下没有明显信号，扩多 seed 大概率只是确认它们暂时不强。
-- 6 env x 3 seeds 成本高，而且主要产出是 baseline 表格，不直接形成 contribution。
-- 当前我们真正有价值的问题已经浮现：SSAR 为什么强、IQL-qv selection 是否能被更便宜地替代。
-- 在还没有自己的机制前，继续扩大 baseline 会消耗时间和预算，但不一定推进论文贡献。
+| 方法 | Final | Best | 判断 |
+|------|------:|-----:|------|
+| IQL compact 100k | 45.27 | 81.28 | IQL 本身很强，必须纳入公平比较 |
+| CQL compact 50k | 39.81 | 39.81 | 可作为 conservative value anchor |
 
-所以现阶段策略应该是：
+补充后的判断：SSAR 的提升不能只和 TD3+BC 比；IQL/value signal 解释了一部分收益。但 SSAR cached 仍显著高于普通 IQL final，并且去掉 IQL selection 后会掉到 25.48，所以下一步应聚焦如何低成本复现或摊销 trusted-action signal。
 
-> 单数据集、单 seed、短训练先探索机制；只有新机制出现明显信号后，再补 seed 和第二个 replay 数据集。
+## 4. 已经排除的方向
 
-## 当前建议保留 / 暂停的方法
+我们试了几个便宜 selector，但目前不能作为方法：
 
-### 保留
+| 变体 | Final | Best | 判断 |
+|------|------:|-----:|------|
+| return-ranked selector | 28.76 | 45.13 @50k | 有峰值但不稳定 |
+| Q-gap online selector | 19.94 | 22.05 | 失败 |
+| behavior consistency selector | 19.77 | 28.00 | 失败 |
 
-- **TD3+BC**：弱 anchor，必须保留作为基础对照。
-- **ReBRAC-lite**：简单强 baseline，用来判断 cheap 方法是否有意义。
-- **SSAR**：当前最强现代 baseline，也是机制探索对象。
+结论：简单在线 TD3 critic 或行为一致性信号不够。后续如果做 selector，应该考虑更强的 offline value source，例如 light critic pretraining、IQL/SSAR label amortization。
 
-### 暂停扩展
+## 5. 建议的项目策略
 
-- **PRDC**：先不做多 seed / 多数据集。
-- **A2PR**：先不做多 seed / 多数据集。
-- **TD3+BC alpha sweep**：alpha5 没有帮助，暂不继续扫。
+### 现在先不要做
 
-## 下一步指导
+- PRDC / A2PR 多 seed、多数据集扩展
+- 6 env x 3 seeds 全量 baseline 表
+- TD3+BC alpha sweep
+- 已失败 cheap selector 的超参搜索
 
-接下来应该从 baseline reproduction 转向 contribution exploration。
+### 现在应该做
 
-优先做：
+1. **统一 benchmark 协议**
+   - 新方法先跑 `hopper-medium-replay-v2`, seed0, 50k
+   - 过 gate 再跑 100k
+   - 100k 稳定后再补 seed1 或第二个 replay env
 
-1. **设计 cheap trusted-action selector**
-   - 目标是近似 SSAR 的 IQL-qv selection，但避免每个 env/seed 都跑 1M-step IQL-qv。
-   - 可尝试方向：短 critic warmup、return-ranked trajectory filter、behavior-consistency filter、Q-gap proxy。
+2. **保留公共 anchor**
+   - TD3+BC：弱 baseline
+   - ReBRAC-lite：简单强 baseline
+   - IQL：强 value baseline
+   - CQL：conservative value anchor
+   - SSAR：当前强 reference，但要复用 cache，避免重复 IQL-qv 预筛
 
-2. **实现一个最小本地版本**
-   - 输出 trusted mask 或 beta weight。
-   - 接入现有 `common.data.D4RLDataset` 和统一 evaluator。
-   - 不要一开始做复杂 framework，先做能跑的最小变体。
+3. **围绕机制设计下一步**
+   - 重点不是“再跑哪个 baseline”
+   - 重点是能否更便宜地获得类似 SSAR IQL-qv 的 value / action-selection 信号
 
-3. **只在 `hopper-medium-replay-v2`, seed 0 跑 50k/100k**
-   - 对照：TD3+BC、ReBRAC-lite、cheap SSAR no-IQL、SSAR cached。
-   - 如果明显超过 ReBRAC-lite，或者显著缩小到 SSAR 的差距，再补 seed。
+## 6. 组会需要拍板的问题
 
-4. **保留并复用 SSAR cache**
-   - 已保存 `hopper-medium-replay-v2`, seed0 的 IQL-qv cache。
-   - 后续不要重复跑 clean full-IQL，除非专门研究 IQL-qv 方差。
+1. 是否同意当前阶段不做 6 env x 3 seeds？
+2. 是否统一把 `hopper-medium-replay-v2 seed0 50k` 作为新方法第一道 gate？
+3. 是否把 TD3+BC / ReBRAC-lite / IQL / CQL / SSAR 作为公共 anchor？
+4. 谁负责维护 benchmark 协议和 result tracker？
+5. A/B/C 各方向谁负责接入统一接口？
+6. 下一步是否围绕 value / trusted-action signal 做项目级贡献探索？
 
-暂时不要做：
+## 7. 建议分工
 
-- PRDC/A2PR 多 seed。
-- 6 个 D4RL 环境全量表。
-- 没有机制目的的 baseline sweep。
-
-## 成本和资源策略
-
-- AutoDL 实例用于持续项目时：**关机保留，不释放**，避免每次从零配置环境。
-- 预算应该优先花在机制验证，而不是扩没信号的 baseline。
-- 每个新想法先做 1 env / 1 seed / 50k 或 100k。
-- 只有满足以下条件之一，再扩实验：
-  - 超过 ReBRAC-lite；
-  - 明显缩小和 SSAR 的差距；
-  - 曲线/机制现象能支持论文故事。
-
-## 当前项目问题
-
-现在 C 方向真正的问题可以表述为：
-
-> SSAR 很强，但它依赖昂贵的 IQL-qv trusted action selection。我们能否提出一个更便宜、更稳定、更容易复现的 trusted-action / data-filtering 替代机制，在 replay 数据上接近 SSAR 的收益？
-
-这比继续补 baseline 更可能形成论文贡献。
-
+| 工作 | 目标 | 优先级 |
+|------|------|--------|
+| 统一实验协议 | 防止结果不可比 | 高 |
+| 维护 SSAR cache / source 记录 | 避免重复昂贵预筛 | 高 |
+| A/B/C 接入统一接口 | 让各方向能公平比较 | 高 |
+| 设计 offline value / label 机制 | 形成潜在贡献 | 高 |
+| 多 seed / 多 env | 有信号后再补 | 中 |

@@ -1,0 +1,64 @@
+\documentclass{article}
+
+\PassOptionsToPackage{numbers,sort&compress}{natbib}
+\usepackage[dblblindworkshop]{neurips_2026}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{enumitem}
+\emergencystretch=2em
+
+\input{math_commands}
+
+\newcommand{\todobox}[1]{%
+  \par\smallskip
+  \noindent\fcolorbox{red!60!black}{yellow!10}{%
+    \begin{minipage}{0.94\linewidth}
+    \textbf{TODO:} #1
+    \end{minipage}}
+  \par\smallskip
+}
+
+\newcommand{\placeholderfig}[2]{%
+  \begin{figure}[t]
+    \centering
+    \fcolorbox{gray!60}{gray!8}{%
+      \begin{minipage}[c][1.35in][c]{0.88\linewidth}
+      \centering
+      \textbf{Figure placeholder:} #1\\[0.3em]
+      #2
+      \end{minipage}}
+    \caption{#1}
+  \end{figure}
+}
+
+\title{The Constraint-Transfer Gap: Trusted-Action Regularization in Offline-to-Online RL}
+\workshoptitle{NeurIPS Workshop Draft}
+\author{Anonymous Course Project Team}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{sections/0_abstract}
+\end{abstract}
+
+\input{sections/1_introduction}
+\input{sections/2_background}
+\input{sections/3_method}
+\input{sections/4_experiments}
+\input{sections/5_discussion}
+\input{sections/6_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+\input{sections/A_appendix}
+
+\end{document}

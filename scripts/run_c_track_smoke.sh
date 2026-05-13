@@ -57,10 +57,40 @@ for RUN in $RUNS; do
     rebrac_lite)
       python -m algorithms.rebrac $COMMON_ARGS --batch_size 1024 --num_critics 2 --algo_name rebrac_lite $TRACKING_ARGS
       ;;
+    iql)
+      python -m algorithms.iql $COMMON_ARGS --batch_size 256 --algo_name iql $TRACKING_ARGS
+      ;;
+    cql)
+      python -m algorithms.cql $COMMON_ARGS --batch_size 256 --algo_name cql $TRACKING_ARGS
+      ;;
     trusted_td3_bc_top20)
       python -m algorithms.trusted_td3_bc $COMMON_ARGS --batch_size 256 \
         --top_trajectory_fraction 0.2 --untrusted_bc_weight 0.05 \
         --algo_name trusted_td3_bc_top20 $TRACKING_ARGS
+      ;;
+    trusted_td3_bc_qgap_soft)
+      python -m algorithms.trusted_td3_bc $COMMON_ARGS --batch_size 256 \
+        --selector_mode qgap_soft --qgap_temperature 10.0 --qgap_min_weight 0.05 \
+        --qgap_warmup_steps 5000 --algo_name trusted_td3_bc_qgap_soft $TRACKING_ARGS
+      ;;
+    trusted_td3_bc_consistency)
+      python -m algorithms.trusted_td3_bc $COMMON_ARGS --batch_size 256 \
+        --selector_mode consistency --consistency_threshold 0.25 \
+        --consistency_temperature 0.05 --consistency_min_weight 0.05 \
+        --consistency_warmup_steps 5000 --algo_name trusted_td3_bc_consistency $TRACKING_ARGS
+      ;;
+    trusted_td3_bc_label_file)
+      if [ -z "${LABEL_PATH:-}" ]; then
+        echo "LABEL_PATH is required for RUN=trusted_td3_bc_label_file" >&2
+        exit 2
+      fi
+      python -m algorithms.trusted_td3_bc $COMMON_ARGS --batch_size 256 \
+        --selector_mode label_file --label_path "$LABEL_PATH" \
+        --label_score_key "${LABEL_SCORE_KEY:-trust_score}" \
+        --label_min_weight "${LABEL_MIN_WEIGHT:-0.05}" \
+        --label_threshold "${LABEL_THRESHOLD:-0.5}" \
+        ${LABEL_BINARIZE:+--label_binarize} \
+        --algo_name "${LABEL_ALGO_NAME:-trusted_td3_bc_label_file}" $TRACKING_ARGS
       ;;
     *)
       echo "Unknown RUN=$RUN" >&2

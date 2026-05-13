@@ -35,10 +35,21 @@ Decision rule:
 - if it beats ReBRAC-lite or trends toward SSAR, extend to 100k;
 - only after a positive 100k signal, consider seed1 or a second replay env.
 
+## Result
+
+Completed on 2026-05-12:
+
+| Run | Final Normalized Score | Best Normalized Score | Best Step | Interpretation |
+|-----|------------------------|-----------------------|-----------|----------------|
+| `trusted_td3_bc_top20` 50k | 45.13 | 45.13 | 50k | beat 50k ReBRAC-lite, but with high eval variance |
+| `trusted_td3_bc_top20` 100k | 28.76 | 45.13 | 50k | the 50k peak did not persist; return-ranked trust alone is not stable enough |
+
+Conclusion: the naive return-ranked trajectory mask is a useful negative/partial probe. It shows that cheap trust weighting can move the curve, but it does not reproduce SSAR's stable 100k behavior. Do not spend seed expansion on this exact variant. Move to a critic/Q-gap or behavior-consistency selector that better approximates SSAR's trusted action selection.
+
 ## Deferred Selectors
 
 - short critic-warmup selector: rank actions by a cheap early critic instead of IQL-qv;
 - behavior-consistency selector: trust states where learned policy and dataset action agree after warmup;
 - Q-gap proxy: trust dataset action when its Q is close to or above the policy action.
 
-These are deferred until the return-ranked selector gives us a concrete first reference point.
+The next candidate should prioritize the Q-gap or behavior-consistency selector over more return-ranked trajectory sweeps.

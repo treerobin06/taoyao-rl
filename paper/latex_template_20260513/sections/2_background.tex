@@ -1,0 +1,46 @@
+\section{Background and Setup}
+
+\subsection{Offline-to-Online RL}
+
+In offline-to-online RL, an agent first learns from a fixed dataset $\D$ and then improves through online interaction. We use replay-style D4RL MuJoCo tasks because D4RL was designed to expose offline RL failure modes under mixed-quality logged data and provides a standard normalized score interface \citep{fu2020d4rl}. The normalized D4RL score used in this project is:
+
+\[
+\score = \texttt{env.get\_normalized\_score(raw\_return)} \times 100.
+\]
+
+\subsection{Algorithm Families}
+
+\paragraph{Value conservatism.}
+Value-conservative methods penalize or regularize value estimates to avoid overestimating actions outside the data distribution. CQL is the canonical anchor for this family \citep{kumar2020cql}; Cal-QL extends this line toward offline-to-online fine-tuning by calibrating conservative value estimates so they remain useful during online learning \citep{nakamoto2023calql}. This is the intended A-line.
+
+\todobox{A-line owner: fill exact method, source repo or implementation, hyperparameters, and result summary.}
+
+\paragraph{Normal or non-conservative contrast.}
+Normal online learners such as PPO, SAC, or vanilla TD3-style fine-tuning provide a contrast against explicitly conservative or behavior-regularized methods \citep{schulman2017ppo,haarnoja2018sac,fujimoto2018td3}. This track is useful even if raw scores are lower, because it answers what happens when explicit conservatism and trusted-action regularization are removed.
+
+\todobox{B-line owner: fill exact method, whether it uses offline pretraining, online horizon, and result summary.}
+
+\paragraph{Policy and behavior regularization.}
+Behavior-regularized methods constrain policy updates toward dataset actions. TD3+BC is a simple anchor \citep{fujimoto2021td3bc}, ReBRAC improves the regularization design \citep{tarasov2023rebrac}, and SSAR introduces a stronger trusted-action mechanism through selective state-adaptive regularization \citep{luo2025ssar}. PRDC and A2PR are recent policy-regularization neighbors that motivate action-level constraint selection under suboptimal data \citep{ran2023prdc,liu2024a2pr}. ATLAS is our C-line probe for distilling trusted-action information.
+
+\subsection{Closest Offline-to-Online Neighbors}
+
+The refined claim should not be that online constraint release is completely new. Prior offline-to-online work already studies this stability-efficiency tension. Adaptive BC regularization adjusts the behavior-cloning loss during online fine-tuning \citep{zhao2022adaptivebc}; PROTO explicitly relaxes a policy-regularization term during fine-tuning \citep{li2023proto}; ENOTO uses Q-ensembles and loosens pessimism for online improvement \citep{zhao2024enoto}; and SUF argues for stabilizing unconstrained fine-tuning without retaining offline constraints \citep{feng2024suf}. Our narrower C-line contribution is a controlled label-quality decomposition: SSAR-style action-level trust labels help offline, shuffled trust weights fail, and fixed teacher-label regularization can obstruct online adaptation.
+
+\subsection{Advantage-Weighted Policy Extraction}
+
+ATLAS is also adjacent to advantage-weighted supervised policy extraction. AWR and IQL both use value-derived weights to turn policy improvement into a supervised action-fitting problem \citep{peng2019awr,kostrikov2021iql}. The difference is that ATLAS does not estimate its own online advantage during fine-tuning. It distills cached SSAR/IQL-qv trusted-action labels into a selector, so the key ablation is whether the teacher-label alignment itself matters.
+
+\subsection{Minimum Comparable Record}
+
+Every experiment should report:
+
+\begin{itemize}[leftmargin=*]
+  \item method and method family;
+  \item environment and seed;
+  \item offline steps and online steps;
+  \item evaluation episodes;
+  \item final normalized score and best normalized score;
+  \item curve or log path;
+  \item one-sentence interpretation.
+\end{itemize}

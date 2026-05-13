@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "timestamp": "2026-05-13T21:32:43+08:00",
+  "workspace": "/Users/robin/Desktop/taoyao/RL/project",
+  "output_dir": "figures/ai_generated",
+  "checks": {
+    "workspace_exists": true,
+    "output_dir_exists": true,
+    "output_dir_writable": true
+  },
+  "native_generation_required": true,
+  "note": "This helper only validates paths; rendering must use codex-image2 native generation."
+}

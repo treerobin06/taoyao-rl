@@ -1,0 +1,2 @@
+{"algo": "trusted_td3_bc_consistency_smoke", "env": "hopper-medium-replay-v2", "seed": 0, "step": 1, "phase": "offline", "wall_time": 1778586384, "raw_return": 11.957201702648373, "normalized_score": 0.9902839354078622, "episode_length": 24.0, "return_std": 0.0}
+{"algo": "trusted_td3_bc_consistency_smoke", "env": "hopper-medium-replay-v2", "seed": 0, "step": 2, "phase": "offline", "wall_time": 1778586384, "raw_return": 14.895003338493066, "normalized_score": 1.0805508387220502, "episode_length": 27.0, "return_std": 0.0}

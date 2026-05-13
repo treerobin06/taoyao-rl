@@ -38,13 +38,20 @@ ALL PASSED (6/6)
 
 如果你在服务器上能跑通 `python smoke_test.py`，说明本机环境、MuJoCo、D4RL 数据、训练和评估链路都基本 OK。
 
+最新研究状态：
+
+- C 线已经完成 `hopper-medium-replay-v2` 的 P0 offline-to-online eval20 panel：50k offline + 10k online，包含 TD3+BC、ATLAS、random trust subset、SSAR/IQL-qv teacher labels。
+- 当前结论不是“ATLAS 稳定超过所有 baseline”，而是一个更稳的机制结论：trusted-action teacher labels 明显帮助 offline initialization，但 fixed teacher regularization 在线上 fine-tuning 时容易造成 constraint-transfer gap。
+- Q-filtered trust gate 在 seed0 能把 ATLAS fixed O2O final 从 28.93 修到 48.41，但 seed1 显示 Hopper O2O 方差很大，不能声明鲁棒 superiority。
+- 论文草稿在 `paper/latex_template_20260513/main.pdf`，实验记录入口在 `refine-logs/EXPERIMENT_RESULTS.md` 和 `refine-logs/EXPERIMENT_TRACKER.md`。
+
 ## 项目分工
 
 | 方向 | 主要算法 | 说明 |
 |---|---|---|
-| A · Value Conservatism | CQL, IQL, Cal-QL | 偏 value pessimism / conservative Q；输出仍需走统一 evaluator。 |
-| B · New SOTA Extensions | DMG, SCQ | 较新的高风险方向；重点是把结果接到统一数据和评估协议。 |
-| C · Policy Regularization / O2O | TD3+BC, ReBRAC, PRDC, A2PR | 偏 policy regularization 和 offline-to-online fine-tuning，是 D4RL MuJoCo 主线之一。 |
+| A · Value Conservatism | CQL, Cal-QL 等 | 偏 value pessimism / conservative Q；输出仍需走统一 evaluator。 |
+| B · Non-Conservative Contrast | PPO / SAC / vanilla TD3-style online fine-tuning 等 | 作为正常/非保守对照，回答“没有显式保守或 trusted-action regularization 时会怎样”。 |
+| C · Policy Regularization / O2O | TD3+BC, ReBRAC, PRDC, A2PR, SSAR/ATLAS | 偏 policy regularization、trusted-action selection 和 offline-to-online fine-tuning，是当前 C 线主线。 |
 
 无论谁负责哪个算法，都尽量遵守同一套接口：
 
@@ -204,7 +211,7 @@ bash scripts/run_bc.sh
 - 这个修复让数据口径与官方 TD3+BC / CORL 实现一致。真实 D4RL 数据核对：`hopper-medium-replay-v2` 为 401,598 条 transition，`halfcheetah-medium-v2` 为 999,000 条 transition。
 - 旧版本直接信任 raw dataset 时会多包含 timeout 边界 transition；如果本地分支较旧，请先拉取最新代码再跑实验。
 
-### C 线四路 smoke
+### C 线四路 smoke / O2O 入口
 
 探索阶段的下一轮筛选固定为一个 replay env、一个 seed、四个系统：
 
@@ -213,6 +220,19 @@ ENV=hopper-medium-replay-v2 SEED=0 STEPS=50000 bash scripts/run_c_track_smoke.sh
 ```
 
 默认会依次运行 `bc`、`td3_bc`、`td3_bc_alpha5`、`rebrac_lite`，结果写入 `results/c_track_smoke/`。详细 claim-driven 计划和执行表见 `refine-logs/EXPERIMENT_PLAN.md` 与 `refine-logs/EXPERIMENT_TRACKER.md`。
+
+当前 C 线 O2O runner：
+
+```bash
+ENV=hopper-medium-replay-v2 SEED=0 bash scripts/run_o2o_minimal.sh
+```
+
+完整 P0/P1/P2/P3 AutoDL 复现实验脚本见：
+
+- `scripts/run_p0_o2o_eval20_autodl.sh`
+- `scripts/run_p1_qgate_o2o_eval20_autodl.sh`
+- `scripts/run_p2_qgate_seed1_eval20_autodl.sh`
+- `scripts/run_p3_atlas_seed1_o2o_eval20_autodl.sh`
 
 ### 实验追踪：Aim + W&B
 
@@ -326,8 +346,8 @@ RTX 4090 单 seed 粗略估计：
 | ReBRAC | 50 min | 25 min | ~1.25 h |
 | PRDC | 45 min | 25 min | ~1.2 h |
 | A2PR | 60 min | 30 min | ~1.5 h |
-| DMG | 50 min | 25 min | ~1.25 h |
-| SCQ | 60 min | 30 min | ~1.5 h |
+| PPO / SAC / vanilla TD3-style contrast | - | 20-40 min | ~0.5-1 h |
+| ATLAS / trusted-label selector | 10-20 min after labels | 20 min | label export / teacher cache cost separate |
 
 如果这是持续项目，AutoDL 上更推荐 setup 成功后关机保留实例，而不是立刻 release。这样下次可以复用环境、数据集缓存和 `mujoco-py` 编译结果。
 

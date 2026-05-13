@@ -25,13 +25,20 @@ normalized_score = 38.4
 ALL PASSED (6/6)
 ```
 
+Latest research status:
+
+- The C-line P0 offline-to-online eval20 panel is complete on `hopper-medium-replay-v2`: 50k offline + 10k online with TD3+BC, ATLAS, random matched trust, and SSAR/IQL-qv teacher labels.
+- The current defensible claim is not robust ATLAS superiority. The stronger mechanism claim is a constraint-transfer gap: trusted-action teacher labels help offline initialization, but fixed teacher regularization can hurt online fine-tuning.
+- A Q-filtered trust gate repairs the ATLAS seed0 fixed-constraint failure from 28.93 to 48.41 online final, but seed1 shows high Hopper O2O variance, so it remains a hypothesis rather than a stable method claim.
+- Current paper draft: `paper/latex_template_20260513/main.pdf`. Current result tracker: `refine-logs/EXPERIMENT_RESULTS.md` and `refine-logs/EXPERIMENT_TRACKER.md`.
+
 ## Project Directions
 
 | Track | Main algorithms | Notes |
 |---|---|---|
-| A · Value Conservatism | CQL, IQL, Cal-QL | Use the shared evaluator; avoid duplicating C-track policy-regularization work. |
-| B · New SOTA Extensions | DMG, SCQ | Higher-risk recent methods; keep outputs compatible with `common.eval`. |
-| C · Policy Regularization / O2O | TD3+BC, ReBRAC, PRDC, A2PR | Main policy-regularization family for D4RL MuJoCo and offline-to-online comparison. |
+| A · Value Conservatism | CQL, Cal-QL, etc. | Conservative Q/value methods; use the shared evaluator. |
+| B · Non-Conservative Contrast | PPO / SAC / vanilla TD3-style online fine-tuning, etc. | Normal or weakly regularized contrast line: what happens without explicit conservatism or trusted-action regularization? |
+| C · Policy Regularization / O2O | TD3+BC, ReBRAC, PRDC, A2PR, SSAR/ATLAS | Policy regularization, trusted-action selection, and offline-to-online comparison. |
 
 Every track should use `common.data.D4RLDataset`, `common.eval.eval_episodes`,
 and `common.eval.write_result`, so final plots compare like with like.
@@ -91,6 +98,19 @@ To run the BC baseline for 3 seeds:
 ```bash
 bash scripts/run_bc.sh
 ```
+
+Current C-line O2O runner:
+
+```bash
+ENV=hopper-medium-replay-v2 SEED=0 bash scripts/run_o2o_minimal.sh
+```
+
+The reproducible AutoDL launchers for the completed P0/P1/P2/P3 O2O panels are:
+
+- `scripts/run_p0_o2o_eval20_autodl.sh`
+- `scripts/run_p1_qgate_o2o_eval20_autodl.sh`
+- `scripts/run_p2_qgate_seed1_eval20_autodl.sh`
+- `scripts/run_p3_atlas_seed1_o2o_eval20_autodl.sh`
 
 ## What `smoke_test.py` Checks
 
@@ -283,8 +303,8 @@ Approximate single-seed runtime on RTX 4090:
 | ReBRAC | 50 min | 25 min | ~1.25 h |
 | PRDC | 45 min | 25 min | ~1.2 h |
 | A2PR | 60 min | 30 min | ~1.5 h |
-| DMG | 50 min | 25 min | ~1.25 h |
-| SCQ | 60 min | 30 min | ~1.5 h |
+| PPO / SAC / vanilla TD3-style contrast | - | 20-40 min | ~0.5-1 h |
+| ATLAS / trusted-label selector | 10-20 min after labels | 20 min | label export / teacher cache cost separate |
 
 For a continued project on AutoDL, it is usually better to power off the instance
 after setup and reuse it later, instead of releasing it and rebuilding the full

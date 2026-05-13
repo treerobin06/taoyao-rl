@@ -1,0 +1,84 @@
+\section{Artifact Index}
+
+Primary C-line evidence files:
+
+\begin{itemize}[leftmargin=*]
+  \item \texttt{refine-logs/C\_LINE\_MERGE\_PACKAGE\_20260513.md}
+  \item \texttt{refine-logs/C\_LINE\_RESULTS\_TABLE\_20260513.md}
+  \item \texttt{refine-logs/remote-results/o2o\_minimal\_20260513/README.md}
+  \item \texttt{refine-logs/remote-results/o2o\_p0\_eval20\_20260514/SUMMARY.md}
+  \item \texttt{refine-logs/NOVELTY\_CHECK\_20260513.md}
+  \item \texttt{refine-logs/EXPERIMENT\_TRACKER.md}
+\end{itemize}
+
+Key executable entrypoints:
+
+\begin{itemize}[leftmargin=*]
+  \item \texttt{algorithms/td3\_bc\_o2o.py}
+  \item \texttt{scripts/run\_o2o\_minimal.sh}
+  \item \texttt{scripts/export\_iql\_trust\_labels.py}
+  \item \texttt{scripts/train\_atlas\_selector.py}
+  \item \texttt{scripts/make\_label\_control.py}
+\end{itemize}
+
+\section{Command and Hyperparameter TODOs}
+
+\subsection{C-Line Reproducibility Commands}
+
+The shared local runners are meant to document the protocol rather than hide it behind one-off shell history. The standard C-line smoke uses one diagnostic replay dataset, one seed, 50k offline steps, and five evaluation episodes:
+
+\begin{verbatim}
+ENV=hopper-medium-replay-v2 SEED=0 STEPS=50000 \
+RUNS="td3_bc rebrac_lite iql cql" \
+bash scripts/run_c_track_smoke.sh
+\end{verbatim}
+
+ATLAS uses a cached SSAR/IQL-qv teacher. The export step scores every D4RL transition with the teacher:
+
+\begin{verbatim}
+CHECKPOINT=/path/to/ssar_iql_qv_0.7_model.pth
+LABELS=/path/to/iql_qv_labels_seed0.npz
+python3 scripts/export_iql_trust_labels.py \
+  --env hopper-medium-replay-v2 \
+  --seed 0 \
+  --checkpoint "$CHECKPOINT" \
+  --output "$LABELS"
+\end{verbatim}
+
+The selector is then trained from the exported labels:
+
+\begin{verbatim}
+LABELS=/path/to/iql_qv_labels_seed0.npz
+ATLAS=/path/to/atlas_selector_seed0.npz
+MODEL=/path/to/atlas_selector_seed0.pt
+python3 scripts/train_atlas_selector.py \
+  --env hopper-medium-replay-v2 \
+  --seed 0 \
+  --labels "$LABELS" \
+  --target_key hard_trust \
+  --output_predictions "$ATLAS" \
+  --output_model "$MODEL"
+\end{verbatim}
+
+Offline ATLAS uses the trained selector as a label file:
+
+\begin{verbatim}
+ATLAS=/path/to/atlas_selector_seed0.npz
+ENV=hopper-medium-replay-v2 SEED=0 STEPS=100000 \
+RUNS="trusted_td3_bc_label_file" \
+LABEL_PATH="$ATLAS" \
+LABEL_SCORE_KEY=trust_score \
+LABEL_ALGO_NAME=trusted_td3_bc_atlas \
+bash scripts/run_c_track_smoke.sh
+\end{verbatim}
+
+The P0 eval20 online slice is run through the O2O runner:
+
+\begin{verbatim}
+bash scripts/run_p0_o2o_eval20_autodl.sh
+\end{verbatim}
+
+For the next C-line run, the recommended protocol is not another broad baseline sweep. It should test a targeted online adaptation mechanism for teacher labels under one seed and one env.
+
+\todobox{A-line owner: add exact command and config for CQL / Cal-QL runs.}
+\todobox{B-line owner: add exact command and config for PPO / SAC / vanilla online runs.}

@@ -9,6 +9,9 @@
 | `bc.py` | Behavior Cloning | smoke test 用，验证 pipeline |
 | `td3_bc.py` | TD3+BC | C 线第一个 offline RL baseline |
 | `rebrac.py` | ReBRAC-style | 探索期 policy regularization smoke，不等同完整官方 JAX 复现 |
+| `trusted_td3_bc.py` | TD3+BC trusted selector variants | return-ranked / Q-gap / consistency / label-file ATLAS selector experiments |
+| `iql.py` | IQL | 公共 value baseline；用于判断 SSAR 收益是否主要来自 IQL 信号 |
+| `cql.py` | CQL | 公共 conservative value baseline；项目级 anchor |
 
 ## 待引入（按小组分工）
 
@@ -47,7 +50,8 @@
 ## 不在本目录的
 
 - **在线 RL 基线（PPO / SAC / TD3）**：直接用 stable-baselines3 / CleanRL，不自己写
-- **CQL** / **IQL**：组内有人做，跨线协调，不在 C 线 repo 中实现
+- ATLAS teacher-label export / selector training lives in `scripts/export_iql_trust_labels.py` and `scripts/train_atlas_selector.py`; keep large `.npz` labels and `.pt` models out of Git.
+- 严格 paper-grade **CQL / IQL**：当前已有 compact shared-pipeline baseline；如用于论文表格，后续仍需官方实现或更严格复现核对
 
 ## 反模式（不要这样做）
 

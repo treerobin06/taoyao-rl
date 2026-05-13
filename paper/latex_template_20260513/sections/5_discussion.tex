@@ -1,0 +1,19 @@
+\section{Discussion}
+
+The current C-line evidence suggests a distinction between offline stabilization and online adaptability. Trusted-action selection can stabilize learning from low-quality replay data, but the same constraint can become harmful once the agent has access to fresh online data. In the P0 eval20 panel, ATLAS and SSAR/IQL-qv teacher labels begin from stronger offline policies than TD3+BC, yet both lose final score during the short online slice. TD3+BC, despite its weak offline endpoint, improves to the strongest online final score among the P0 methods.
+
+This argues against a simple ``more conservatism is always better'' story. A more plausible view is temporal: conservative or trusted-action constraints may help during offline pretraining, but online fine-tuning may require a different adaptation mechanism. The current linear release schedule is not enough to recover ATLAS or SSAR/IQL-qv final online performance on seed0, while fixed SSAR/IQL-qv shows a large transient spike and then decays. Q-filtered trust is the first targeted repair that improves ATLAS seed0 final score, but seed1 shows that this remains a hypothesis rather than a stable method claim.
+
+\todobox{LJY / B-line: if Gate-aware release is kept, position it here as follow-up or optional mechanism, not as a replacement for the main project.}
+\todobox{A-line owner: add whether value conservatism appears stable, over-conservative, or implementation-sensitive.}
+\todobox{B-line owner: add whether non-conservative online learning adapts faster, starts weaker, or remains unstable.}
+
+\section{Limitations}
+
+First, most current results are exploration-stage smoke experiments rather than full multi-seed benchmarks. The goal was to identify high-value mechanisms under budget constraints.
+
+Second, SSAR and ATLAS depend on an expensive IQL-qv teacher cache. ATLAS should be described as post-cache or amortized cheaper, not cheaper from scratch.
+
+Third, the online slice is intentionally short and Hopper has high variance. Seed1 TD3+BC reaches 98.86 after 10k online steps, so seed0 method improvements must be treated as diagnostic rather than definitive.
+
+Fourth, A-line and B-line results are not yet merged. The final cross-line claim should wait until those tracks provide comparable results.

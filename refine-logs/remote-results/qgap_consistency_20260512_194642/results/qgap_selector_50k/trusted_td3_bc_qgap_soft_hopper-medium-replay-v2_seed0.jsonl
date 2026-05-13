@@ -1,0 +1,1 @@
+{"algo": "trusted_td3_bc_qgap_soft", "env": "hopper-medium-replay-v2", "seed": 0, "step": 10000, "phase": "offline", "wall_time": 1778585886, "raw_return": 697.3226390099423, "normalized_score": 22.048824753639703, "episode_length": 208.0, "return_std": 48.25086696279922}

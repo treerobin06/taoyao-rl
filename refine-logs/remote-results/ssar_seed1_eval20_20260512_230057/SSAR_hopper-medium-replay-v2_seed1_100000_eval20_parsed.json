@@ -1,0 +1,75 @@
+{
+  "name": "SSAR_hopper-medium-replay-v2_seed1_100000_eval20",
+  "env": "hopper-medium-replay-v2",
+  "seed": 1,
+  "offline_steps": 100000,
+  "eval_freq": 10000,
+  "eval_episodes": 20,
+  "log": "/root/autodl-tmp/external_quick_logs/ssar_seed1_eval20_20260512_230057/SSAR_hopper-medium-replay-v2_seed1_100000_eval20.log",
+  "cache_backup": "/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed1",
+  "scores": [
+    {
+      "step": 10000,
+      "episodes": 20,
+      "raw_return": 902.266,
+      "normalized_score": 28.346
+    },
+    {
+      "step": 20000,
+      "episodes": 20,
+      "raw_return": 701.852,
+      "normalized_score": 22.188
+    },
+    {
+      "step": 30000,
+      "episodes": 20,
+      "raw_return": 843.393,
+      "normalized_score": 26.537
+    },
+    {
+      "step": 40000,
+      "episodes": 20,
+      "raw_return": 842.768,
+      "normalized_score": 26.518
+    },
+    {
+      "step": 50000,
+      "episodes": 20,
+      "raw_return": 862.118,
+      "normalized_score": 27.112
+    },
+    {
+      "step": 60000,
+      "episodes": 20,
+      "raw_return": 1346.306,
+      "normalized_score": 41.989
+    },
+    {
+      "step": 70000,
+      "episodes": 20,
+      "raw_return": 1884.461,
+      "normalized_score": 58.525
+    },
+    {
+      "step": 80000,
+      "episodes": 20,
+      "raw_return": 2141.792,
+      "normalized_score": 66.432
+    },
+    {
+      "step": 90000,
+      "episodes": 20,
+      "raw_return": 3208.764,
+      "normalized_score": 99.215
+    },
+    {
+      "step": 100000,
+      "episodes": 20,
+      "raw_return": 1961.016,
+      "normalized_score": 60.877
+    }
+  ],
+  "final": 60.877,
+  "best": 99.215,
+  "best_step": 90000
+}

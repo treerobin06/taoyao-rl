@@ -9,7 +9,7 @@
 - Remote AutoDL path: `/root/autodl-tmp/taoyao-rl/project`
 - External source checkouts on AutoDL: `/root/autodl-tmp/external_repos/`
 - Project type: offline RL / offline-to-online RL group project
-- Current stage: **baseline/reproduction enough; contribution exploration should start**
+- Current stage: **C-line P0 offline-to-online panel is complete; current contribution is a constraint-transfer-gap mechanism study, not robust ATLAS superiority**
 
 ## Canonical Docs
 
@@ -37,27 +37,60 @@ Key `hopper-medium-replay-v2`, seed 0 results:
 | PRDC official source 50k | 23.54 | 23.54 | reference only; do not expand now |
 | A2PR official source 50k | 22.31 | 22.81 | reference only; do not expand now |
 | SSAR full-IQL 50k | 38.56 | 43.97 | strongest modern baseline after full IQL-qv |
-| SSAR cached-IQL 100k | 92.44 | 100.98 | strongest current signal, but 5-episode eval and one seed |
+| SSAR cached-IQL 100k seed0 eval5 | 92.44 | 100.98 | high-variance upper anchor, not stable final estimate |
+| SSAR full-IQL 100k seed1 eval20 | 60.88 | 99.22 | near-100 spike repeats, but final/tail is unstable |
 | cheap SSAR without IQL selection 100k | 25.48 | 30.34 | ablation showing IQL-qv selection is critical |
+| IQL compact 100k | 45.27 | 81.28 | strong value baseline; include in any fair SSAR comparison |
+| CQL compact 50k | 39.81 | 39.81 | conservative value anchor; not a C-line expansion target |
+| ATLAS teacher-label selector 100k | 69.97 | 69.97 | strongest local contribution candidate so far |
+| ATLAS teacher-label selector seed1 eval20 100k | 68.11 | 68.11 | passed first narrow stability check |
+| ATLAS shuffled-label control 50k | 18.78 | 19.35 | label-quality ablation; teacher alignment matters |
+| SSAR walker2d full-IQL 100k seed0 eval10 | 94.28 | 94.60 | second-env teacher anchor |
+| ATLAS walker2d teacher-label selector 100k seed0 eval10 | 71.26 | 77.86 | second-env ATLAS signal survives, but gap to SSAR remains |
 
-Main takeaway:
+Main offline takeaway:
 
-> The likely contribution is not another baseline table. It is a cheaper, stable, reproducible replacement or amortization strategy for SSAR's expensive IQL-qv trusted-action selection.
+> The likely contribution is not another baseline table. IQL is already a strong value baseline, and SSAR/IQL-qv can spike very high but has unstable tail scores. The sharper question is whether we can cheaply reproduce or amortize the trusted-action signal in a lighter, more stable way. ATLAS passed the first offline stability and label-quality checks, while the O2O panel reveals the harder problem: offline trusted-action gains do not automatically transfer online.
+
+Offline-to-online update, `hopper-medium-replay-v2`, 50k offline + 10k online, eval20:
+
+| System | Seed | Offline Final | Online Final | Online Best | Current Role |
+|--------|-----:|--------------:|-------------:|------------:|--------------|
+| TD3+BC release | 0 | 22.20 | 40.06 | 40.06 | weak offline anchor, improves online |
+| ATLAS release | 0 | 46.70 | 37.50 | 38.79 | strong offline, loses final online |
+| SSAR/IQL-qv release | 0 | 50.71 | 28.87 | 31.85 | strongest offline decay endpoint, worst online final |
+| SSAR/IQL-qv fixed | 0 | 50.71 | 38.61 | 96.22 | transient spike, unstable tail |
+| ATLAS Q-gate fixed | 0 | 46.70 | 48.41 | 48.41 | repairs seed0 fixed-constraint failure |
+| TD3+BC release | 1 | 20.19 | 98.86 | 98.86 | exposes high Hopper O2O variance |
+| ATLAS release | 1 | 31.21 | 84.35 | 84.35 | strong seed1, but below TD3+BC |
+| ATLAS Q-gate fixed | 1 | 31.21 | 39.91 | 70.03 | better than fixed, worse than release |
+
+O2O takeaway:
+
+> Teacher labels help offline initialization, but carrying fixed teacher regularization into online fine-tuning can trap adaptation. Q-filtered trust is a useful diagnostic hypothesis on seed0, but seed1 prevents claiming robust method dominance.
 
 ## Current TODO
 
-The next agent should work on contribution exploration, not baseline collection.
+The next agent should work on paper integration and A/B-line alignment, not broad C-line baseline collection.
 
-1. Design 2-3 cheap trusted-action selector candidates.
-   - Possible directions: short critic warmup, return-ranked trajectory filter, behavior-consistency filter, Q-gap proxy.
-2. Implement one minimal selector in local editable code.
-   - Prefer compatibility with current `common/` data and eval APIs.
-   - Keep output as a trusted mask, beta weight, or selector artifact that can be compared against SSAR.
-3. Run only `hopper-medium-replay-v2`, seed 0, 50k/100k first.
-   - Compare against TD3+BC, ReBRAC-lite, cheap SSAR no-IQL, and SSAR cached.
-4. Only if this local selector has signal, run seed1 or a second replay env.
+1. ATLAS seed1 stability check is done.
+   - Seed1 eval20 final/best is `68.11`, close to seed0 final/best `69.97`.
+   - Next highest-value check is one second replay env, not more seeds on hopper yet.
+2. Label-quality ablation is done for shuffled labels.
+   - Shuffled labels preserve the score distribution but drop to 18.78 final at 50k.
+   - This supports that the gain comes from IQL/SSAR teacher alignment, not generic weighted BC.
+3. `walker2d-medium-replay-v2` seed0 second-env check is done.
+   - SSAR full IQL-qv final/best: `94.28 / 94.60`.
+   - ATLAS final/best: `71.26 / 77.86`.
+   - This supports cross-env ATLAS signal, but leaves a large optimization gap.
+4. P0 O2O and Q-filtered trust diagnostics are done.
+   - The paper should claim a constraint-transfer gap and a promising diagnostic gate.
+   - It should not claim ATLAS or Q-gate is a robust SOTA online fine-tuning method.
 
-Do not unblock multi-seed/multi-env until a local selector beats ReBRAC-lite or clearly narrows the gap to SSAR.
+Do not unblock broad multi-seed/multi-env until ATLAS survives at least one stability check.
+ATLAS has survived one seed check and one second-env check; broad sweeps are still deferred until the walker gap is better explained.
+
+Optimization priority after the O2O panel: only run more C-line compute if it directly diagnoses online constraint transfer. The cheapest meaningful follow-ups are an A-line O2O anchor, a B-line non-conservative online contrast, or a narrow Q-gate/reset ablation; do not rerun PRDC/A2PR or broad seed sweeps.
 
 ## Explicitly Deferred
 
@@ -81,9 +114,13 @@ Known instance:
 
 SSAR IQL-qv cache to preserve:
 
-- Primary: `/root/autodl-tmp/external_repos/SSAR/model/iql_qv/hopper-medium-replay-v2/0/0.7_model.pth`
-- Backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed0/0.7_model.pth`
-- SHA256: `dffa751dd22177b0161baa0bd5661517984644fbfe7afb27fb1065a3eb8c0579`
+- Seed0 primary: `/root/autodl-tmp/external_repos/SSAR/model/iql_qv/hopper-medium-replay-v2/0/0.7_model.pth`
+- Seed0 backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed0/0.7_model.pth`
+- Seed0 SHA256: `dffa751dd22177b0161baa0bd5661517984644fbfe7afb27fb1065a3eb8c0579`
+- Seed1 backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed1/0.7_model.pth`
+- Seed1 SHA256: `53dd12638216579de50a2449ad7c598ffe9f97f85c7975ee71583fb1694a08fd`
+- Walker seed0 backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/walker2d-medium-replay-v2/seed0/0.7_model.pth`
+- Walker seed0 SHA256: `ffe559a043a2f0ef5814d7cfeb18d6ce2960120ebddeb7fffde0eb31ef3aeb64`
 
 Do not delete or overwrite this cache unless intentionally testing IQL-qv variance. A clean full IQL-qv run took about 62 minutes before the 50k offline training.
 
@@ -162,8 +199,10 @@ When making a meaningful experiment decision, update:
 
 Stop doing baseline reproduction when it does not create a new mechanism insight. Go only when a run directly answers:
 
-- Can we replace IQL-qv trusted selection cheaply?
-- Can we amortize/cached-pretrain it safely?
-- Can a simple local selector approach SSAR while staying much cheaper?
+- Can ATLAS survive a second seed or second replay env?
+- Does teacher-label quality matter versus random/return-only labels?
+- Can we quantify the cost/performance tradeoff against full SSAR IQL-qv preselection?
+- Can label weighting or selector capacity close the walker gap without rerunning expensive IQL-qv?
+- Does an online adaptation rule release trusted-action constraints when the online critic disagrees?
 
 That is now the C-line project question.

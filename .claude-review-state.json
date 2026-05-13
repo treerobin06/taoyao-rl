@@ -1,0 +1,29 @@
+{
+  "last_run_at": "2026-05-13T22:31:52+0800",
+  "skill": "claude-review",
+  "mode": "claude-cli-fallback",
+  "claude_session_id": "b1fd72aa-c0ac-47ea-b26f-19cfe5597916",
+  "review_type": "research-idea",
+  "scope_root": "/Users/robin/Desktop/taoyao/RL/project",
+  "scope_paths": [
+    "idea-stage/IDEA_REPORT.md",
+    "idea-stage/IDEA_REPORT_20260513_POSTHOC.md",
+    "refine-logs/EXPERIMENT_RESULTS.md"
+  ],
+  "verdict_score": 5,
+  "primary_verdict": "Reframe from broad offline-to-online mechanism to offline label-quality plus cheap action-trust selector.",
+  "recommended_route": "ATLAS as a cheap action-trust selector distilled from IQL-qv labels; online transfer as limitation or secondary negative result.",
+  "open_risks": [
+    "Headline results are mostly single-seed.",
+    "Mechanistic claim needs random-subset and online shuffled-label controls.",
+    "Online release framing overlaps with existing offline-to-online RL literature.",
+    "Eval episode counts are inconsistent across key cells.",
+    "Task coverage is narrow."
+  ],
+  "next_experiments": [
+    "Random-subset control with same trust fraction as ATLAS.",
+    "Eval20 unification for key paper-facing cells.",
+    "ATLAS hopper additional seed or second-env sanity check.",
+    "Online shuffled-label control if keeping the online-transfer failure story."
+  ]
+}

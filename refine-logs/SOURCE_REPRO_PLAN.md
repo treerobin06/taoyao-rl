@@ -1,8 +1,8 @@
 # Official-Source Reproduction Plan
 
 **Date**: 2026-05-12
-**Stage**: exploration, one dataset / one seed first
-**Primary setting**: `hopper-medium-replay-v2`, seed 0
+**Stage**: exploration, one dataset first
+**Primary setting**: `hopper-medium-replay-v2`, seed 0 plus targeted seed1 reliability check
 
 ## Goal
 
@@ -69,9 +69,13 @@ If any of those are changed, label the run as `localized-variant`, not `source-r
 - Status: done on 2026-05-12
 - Result: final 38.56, best 43.97 @40k on `hopper-medium-replay-v2`, seed 0
 - Cost note: clean IQL-qv preselection plus 50k offline training took 4003s on the retained AutoDL instance
-- Cache to keep: `/root/autodl-tmp/external_repos/SSAR/model/iql_qv/hopper-medium-replay-v2/0/0.7_model.pth`
-- Cache backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed0/0.7_model.pth`
-- Cache checksum: `dffa751dd22177b0161baa0bd5661517984644fbfe7afb27fb1065a3eb8c0579`
+- Seed0 cache to keep: `/root/autodl-tmp/external_repos/SSAR/model/iql_qv/hopper-medium-replay-v2/0/0.7_model.pth`
+- Seed0 cache backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed0/0.7_model.pth`
+- Seed0 cache checksum: `dffa751dd22177b0161baa0bd5661517984644fbfe7afb27fb1065a3eb8c0579`
+- Seed1 cache backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/hopper-medium-replay-v2/seed1/0.7_model.pth`
+- Seed1 cache checksum: `53dd12638216579de50a2449ad7c598ffe9f97f85c7975ee71583fb1694a08fd`
+- Walker seed0 cache backup: `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/walker2d-medium-replay-v2/seed0/0.7_model.pth`
+- Walker seed0 cache checksum: `ffe559a043a2f0ef5814d7cfeb18d6ce2960120ebddeb7fffde0eb31ef3aeb64`
 
 ### S3: Migration Candidate Selection
 
@@ -110,8 +114,19 @@ Results:
 
 | Variant | Final | Best | Interpretation |
 |---------|------:|-----:|----------------|
-| `SSAR_cached_100k` | 92.44 | 100.98 | full IQL-qv cache reuse makes SSAR much stronger by 100k |
+| `SSAR_cached_100k`, seed0, eval5 | 92.44 | 100.98 | strong upper anchor, but high-variance and not a stable final estimate |
+| `SSAR_seed1_100k`, eval20 | 60.88 | 99.22 | confirms near-100 spike is possible, but final/tail is unstable |
 | `cheap_SSAR_no_iql_select_100k` | 25.48 | 30.34 | without trusted action selection, SSAR loses most gains |
 | `ReBRAC_lite_100k` | 36.54 | 54.36 | useful simple baseline, but does not match cached SSAR |
 
-Updated decision: the most valuable contribution direction is not broad SOTA collection, but replacing or amortizing SSAR's expensive IQL-qv trusted action selection with a lighter mechanism.
+Updated decision: the most valuable contribution direction is not broad SOTA collection, but replacing or amortizing SSAR's expensive IQL-qv trusted action selection with a lighter and more stable mechanism. Do not cite seed0 `92.44/100.98` as a stable baseline level; cite it as a high-variance upper anchor.
+
+## Second Replay Env Anchor
+
+Completed on 2026-05-13:
+
+| Env | Seed | Eval Episodes | Final | Best | Best Step | Cache |
+|-----|-----:|--------------:|------:|-----:|----------:|-------|
+| `walker2d-medium-replay-v2` | 0 | 10 | 94.28 | 94.60 | 40k | preserved under `/root/autodl-tmp/taoyao-rl-cache/SSAR/iql_qv/walker2d-medium-replay-v2/seed0/` |
+
+Use this as the walker teacher anchor for ATLAS optimization. Do not rerun walker IQL-qv unless intentionally testing teacher variance.
